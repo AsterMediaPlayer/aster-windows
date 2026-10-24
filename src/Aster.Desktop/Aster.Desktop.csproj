@@ -14,6 +14,8 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <!-- The Apple app's version, which this port follows. -->
     <Version>0.9.1</Version>
+    <!-- The .exe's icon (Windows); tools/icon makes it from the icon's layers. -->
+    <ApplicationIcon Condition="$(TargetFramework.Contains('-windows'))">Assets\aster.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
