@@ -186,7 +186,7 @@
                     <Border Classes="fact" IsVisible="{Binding ServerVersion, Converter={x:Static ObjectConverters.IsNotNull}}">
                         <DockPanel>
                             <TextBlock Classes="value" Text="{Binding ServerVersion}" />
-                            <TextBlock Text="Jellyfin version" />
+                            <TextBlock Text="{Binding ServerVersionLabel}" />
                         </DockPanel>
                     </Border>
 
@@ -230,7 +230,7 @@
                         </DockPanel>
                     </Border>
                     <Border Classes="note">
-                        <TextBlock Text="A Jellyfin client for Windows and Linux, ported from the Apple TV, iPhone, iPad and Mac app." />
+                        <TextBlock Text="A Jellyfin and Emby client for Windows and Linux, ported from the Apple TV, iPhone, iPad and Mac app." />
                     </Border>
                 </StackPanel>
             </StackPanel>

@@ -40,18 +40,33 @@ public sealed class JellyfinClient
     public string? AccessToken { get; }
     public string? UserId { get; }
 
+    /// <summary>Jellyfin or Emby: a few routes differ between them, and Jellyfin's plugins and extras answer nothing on Emby.</summary>
+    public ServerKind Kind { get; }
+
+    public bool IsJellyfin => Kind == ServerKind.Jellyfin;
+
     private readonly HttpClient http;
 
     /// <param name="http">For tests; the app shares one client.</param>
-    public JellyfinClient(Uri baseUrl, string? accessToken = null, string? userId = null, HttpClient? http = null)
+    public JellyfinClient(Uri baseUrl, string? accessToken = null, string? userId = null, HttpClient? http = null, ServerKind kind = ServerKind.Jellyfin)
     {
         BaseUrl = baseUrl;
         AccessToken = accessToken;
         UserId = userId;
+        Kind = kind;
         this.http = http ?? SharedHttp;
     }
 
-    public JellyfinClient SignedIn(string token, string userId) => new(BaseUrl, token, userId, http);
+    public JellyfinClient SignedIn(string token, string userId) => new(BaseUrl, token, userId, http, Kind);
+
+    /// <summary>The same server, known now to be <paramref name="kind"/> (from its public info).</summary>
+    public JellyfinClient As(ServerKind kind) => new(BaseUrl, AccessToken, UserId, http, kind);
+
+    /// <summary>
+    /// Jellyfin 10.9+'s path, or on Emby its older per-user form (the user in
+    /// the path; the <c>userId</c> query sent as well is ignored there).
+    /// </summary>
+    private string Route(string jellyfin, Func<string> emby) => Kind == ServerKind.Emby ? emby() : jellyfin;
 
     // ---- Request plumbing ----
 
@@ -212,8 +227,9 @@ public sealed class JellyfinClient
     public Task<AuthenticationResult> AuthenticateAsync(string username, string password, CancellationToken ct = default) =>
         PostAsync<AuthenticationResult>("/Users/AuthenticateByName", body: new { Username = username, Pw = password }, ct: ct);
 
+    /// <summary>Jellyfin's; Emby has no Quick Connect.</summary>
     public Task<bool> QuickConnectEnabledAsync(CancellationToken ct = default) =>
-        GetAsync<bool>("/QuickConnect/Enabled", ct: ct);
+        IsJellyfin ? GetAsync<bool>("/QuickConnect/Enabled", ct: ct) : Task.FromResult(false);
 
     public Task<QuickConnectResult> QuickConnectInitiateAsync(CancellationToken ct = default) =>
         PostAsync<QuickConnectResult>("/QuickConnect/Initiate", ct: ct);
@@ -238,10 +254,10 @@ public sealed class JellyfinClient
     private string RequireUser() => UserId ?? throw JellyfinException.NotSignedIn();
 
     public async Task<IReadOnlyList<BaseItem>> UserViewsAsync(CancellationToken ct = default) =>
-        (await GetAsync<ItemsResult>("/UserViews", new() { ["userId"] = RequireUser() }, ct).ConfigureAwait(false)).Items;
+        (await GetAsync<ItemsResult>(Route("/UserViews", () => $"/Users/{RequireUser()}/Views"), new() { ["userId"] = RequireUser() }, ct).ConfigureAwait(false)).Items;
 
     public Task<BaseItem> ItemAsync(string id, CancellationToken ct = default) =>
-        GetAsync<BaseItem>($"/Items/{id}", new() { ["userId"] = RequireUser(), ["fields"] = DetailFields }, ct);
+        GetAsync<BaseItem>(Route($"/Items/{id}", () => $"/Users/{RequireUser()}/Items/{id}"), new() { ["userId"] = RequireUser(), ["fields"] = DetailFields }, ct);
 
     public Task<ItemsResult> ItemsAsync(Query query, CancellationToken ct = default)
     {
@@ -410,7 +426,7 @@ public sealed class JellyfinClient
     }
 
     public Task<List<BaseItem>> LatestAsync(string? parentId, int limit = 20, string? includeTypes = null, CancellationToken ct = default) =>
-        GetAsync<List<BaseItem>>("/Items/Latest", new()
+        GetAsync<List<BaseItem>>(Route("/Items/Latest", () => $"/Users/{RequireUser()}/Items/Latest"), new()
         {
             ["userId"] = RequireUser(),
             ["parentId"] = parentId,
@@ -422,7 +438,7 @@ public sealed class JellyfinClient
         }, ct);
 
     public async Task<IReadOnlyList<BaseItem>> ResumeAsync(int limit = 20, string? parentId = null, CancellationToken ct = default) =>
-        (await GetAsync<ItemsResult>("/UserItems/Resume", new()
+        (await GetAsync<ItemsResult>(Route("/UserItems/Resume", () => $"/Users/{RequireUser()}/Items/Resume"), new()
         {
             ["userId"] = RequireUser(),
             ["parentId"] = parentId,
@@ -545,21 +561,22 @@ public sealed class JellyfinClient
     /// or the request fails; callers then fall back to chapter markers.
     /// </summary>
     public Task<IReadOnlyList<OpEdTheme>?> OpEdThemesAsync(string itemId, CancellationToken ct = default) =>
-        OrNullAsync(async () => (await GetAsync<OpEdThemeList>($"/OpEd/Items/{itemId}/Themes", ct: ct).ConfigureAwait(false)).Themes, ct);
+        // Aster's server plugins are Jellyfin plugins.
+        IsJellyfin ? OrNullAsync(async () => (await GetAsync<OpEdThemeList>($"/OpEd/Items/{itemId}/Themes", ct: ct).ConfigureAwait(false)).Themes, ct) : Task.FromResult<IReadOnlyList<OpEdTheme>?>(null);
 
     /// <summary>
     /// The theme a published music video (or song) is, from the OP/ED
     /// plugin; null for any other item, or without the plugin.
     /// </summary>
     public Task<OpEdTheme?> OpEdThemeForLibraryItemAsync(string itemId, CancellationToken ct = default) =>
-        OrNullAsync(() => GetAsync<OpEdTheme>($"/OpEd/LibraryItems/{itemId}/Theme", ct: ct), ct);
+        IsJellyfin ? OrNullAsync(() => GetAsync<OpEdTheme>($"/OpEd/LibraryItems/{itemId}/Theme", ct: ct), ct) : Task.FromResult<OpEdTheme?>(null);
 
     /// <summary>
     /// Live TV channels' groups, by channel id, from the Aster Channels
     /// plugin; null without it (or before 0.2), which leaves Live TV as it was.
     /// </summary>
     public Task<IReadOnlyDictionary<string, string>?> LiveTvGroupsAsync(CancellationToken ct = default) =>
-        OrNullAsync(async () => (await GetAsync<LiveTvGroupList>("/AsterChannels/LiveTvGroups", ct: ct).ConfigureAwait(false)).ByChannel, ct);
+        IsJellyfin ? OrNullAsync(async () => (await GetAsync<LiveTvGroupList>("/AsterChannels/LiveTvGroups", ct: ct).ConfigureAwait(false)).ByChannel, ct) : Task.FromResult<IReadOnlyDictionary<string, string>?>(null);
 
     /// <summary>Puts a Live TV channel in <paramref name="group"/>, or out of its group for null (administrators only); every channel's group after.</summary>
     public async Task<IReadOnlyDictionary<string, string>> SetLiveTvGroupAsync(string channelId, string? group, CancellationToken ct = default) =>
@@ -567,7 +584,7 @@ public sealed class JellyfinClient
 
     /// <summary>The OP/ED plugin's published libraries; null without the plugin (or before 0.2).</summary>
     public Task<OpEdLibraries?> OpEdLibrariesAsync(CancellationToken ct = default) =>
-        OrNullAsync(() => GetAsync<OpEdLibraries>("/OpEd/Library", ct: ct), ct);
+        IsJellyfin ? OrNullAsync(() => GetAsync<OpEdLibraries>("/OpEd/Library", ct: ct), ct) : Task.FromResult<OpEdLibraries?>(null);
 
     /// <summary>A library's newest music videos, for a shelf.</summary>
     public async Task<IReadOnlyList<BaseItem>> LatestMusicVideosAsync(string libraryId, int limit = 20, CancellationToken ct = default) =>
@@ -607,7 +624,7 @@ public sealed class JellyfinClient
         }, ct).ConfigureAwait(false)).Items;
 
     public Task<List<BaseItem>> SpecialFeaturesAsync(string id, CancellationToken ct = default) =>
-        GetAsync<List<BaseItem>>($"/Items/{id}/SpecialFeatures", new() { ["userId"] = RequireUser() }, ct);
+        GetAsync<List<BaseItem>>(Route($"/Items/{id}/SpecialFeatures", () => $"/Users/{RequireUser()}/Items/{id}/SpecialFeatures"), new() { ["userId"] = RequireUser() }, ct);
 
     public async Task<IReadOnlyList<BaseItem>> SearchAsync(string term, int limit = 60, CancellationToken ct = default) =>
         (await ItemsAsync(new()
@@ -624,13 +641,15 @@ public sealed class JellyfinClient
     public Task SetFavoriteAsync(string id, bool favorite, CancellationToken ct = default)
     {
         var query = new Query { ["userId"] = RequireUser() };
-        return favorite ? PostAsync($"/UserFavoriteItems/{id}", query, ct: ct) : DeleteAsync($"/UserFavoriteItems/{id}", query, ct);
+        var path = Route($"/UserFavoriteItems/{id}", () => $"/Users/{RequireUser()}/FavoriteItems/{id}");
+        return favorite ? PostAsync(path, query, ct: ct) : DeleteAsync(path, query, ct);
     }
 
     public Task SetPlayedAsync(string id, bool played, CancellationToken ct = default)
     {
         var query = new Query { ["userId"] = RequireUser() };
-        return played ? PostAsync($"/UserPlayedItems/{id}", query, ct: ct) : DeleteAsync($"/UserPlayedItems/{id}", query, ct);
+        var path = Route($"/UserPlayedItems/{id}", () => $"/Users/{RequireUser()}/PlayedItems/{id}");
+        return played ? PostAsync(path, query, ct: ct) : DeleteAsync(path, query, ct);
     }
 
     // ---- Playback ----
@@ -650,7 +669,7 @@ public sealed class JellyfinClient
 
     /// <summary>Replaces the user's settings wholesale; send a complete configuration.</summary>
     public Task UpdateConfigurationAsync(UserConfiguration configuration, CancellationToken ct = default) =>
-        PostAsync("/Users/Configuration", new() { ["userId"] = RequireUser() }, configuration, ct);
+        PostAsync(Route("/Users/Configuration", () => $"/Users/{RequireUser()}/Configuration"), new() { ["userId"] = RequireUser() }, configuration, ct);
 
     /// <summary>
     /// <paramref name="allowDirect"/> false makes the server offer an HLS
@@ -755,7 +774,7 @@ public sealed class JellyfinClient
     public async Task SaveResumePositionAsync(string itemId, long ticks, CancellationToken ct = default)
     {
         if (UserId is null) return;
-        await PostAsync($"/UserItems/{itemId}/UserData", new() { ["userId"] = UserId }, new { PlaybackPositionTicks = ticks }, ct).ConfigureAwait(false);
+        await PostAsync(Route($"/UserItems/{itemId}/UserData", () => $"/Users/{UserId}/Items/{itemId}/UserData"), new() { ["userId"] = UserId }, new { PlaybackPositionTicks = ticks }, ct).ConfigureAwait(false);
     }
 
     // ---- Images ----
@@ -1197,7 +1216,14 @@ public sealed class JellyfinClient
     /// <paramref name="isPublic"/> lets every user on the server see it (a genre Channel's).
     /// </summary>
     public async Task<string> CreatePlaylistAsync(string name, IReadOnlyList<string> itemIds, string mediaType, bool? isPublic = null, CancellationToken ct = default) =>
-        (await PostAsync<PlaylistCreationResult>("/Playlists", body: new
+        // Emby reads these from the query rather than the body: both, there.
+        (await PostAsync<PlaylistCreationResult>("/Playlists", IsJellyfin ? null : new()
+        {
+            ["Name"] = name,
+            ["Ids"] = string.Join(',', itemIds),
+            ["UserId"] = RequireUser(),
+            ["MediaType"] = mediaType,
+        }, new
         {
             Name = name,
             Ids = itemIds,
@@ -1245,8 +1271,34 @@ public sealed class JellyfinClient
     /// </summary>
     public async Task<IReadOnlyList<MediaSegment>> MediaSegmentsAsync(string itemId, CancellationToken ct = default)
     {
+        if (!IsJellyfin)
+        {
+            var item = await ItemAsync(itemId, ct).ConfigureAwait(false);
+            return SegmentsFromChapters(item.Chapters ?? [], itemId, item.RunTimeTicks);
+        }
         if (await SendAsync(AuthorizedRequest(Url($"/MediaSegments/{itemId}")), ct, allowNotFound: true).ConfigureAwait(false) is not { } data) return [];
         return Decode<ItemsEnvelope<MediaSegment>>(data).Items.Where(s => SkippableSegmentTypes.Contains(s.Type)).ToList();
+    }
+
+    /// <summary>
+    /// Emby has no media segments: it marks an intro (and where the credits
+    /// begin) as chapters, which become the same Intro and Outro segments:
+    /// the intro from IntroStart to IntroEnd, the credits from CreditsStart to
+    /// the end. Chapters without those marks give nothing.
+    /// </summary>
+    public static IReadOnlyList<MediaSegment> SegmentsFromChapters(IReadOnlyList<ChapterInfo> chapters, string itemId, long? runTimeTicks)
+    {
+        long? Mark(string type) => chapters.FirstOrDefault(c => string.Equals(c.MarkerType, type, StringComparison.OrdinalIgnoreCase))?.StartPositionTicks;
+        var segments = new List<MediaSegment>();
+        if (Mark("IntroStart") is { } introStart && Mark("IntroEnd") is { } introEnd && introEnd > introStart)
+        {
+            segments.Add(new MediaSegment { Id = $"{itemId}-intro", ItemId = itemId, Type = "Intro", StartTicks = introStart, EndTicks = introEnd });
+        }
+        if (Mark("CreditsStart") is { } creditsStart && runTimeTicks is { } end && end > creditsStart)
+        {
+            segments.Add(new MediaSegment { Id = $"{itemId}-credits", ItemId = itemId, Type = "Outro", StartTicks = creditsStart, EndTicks = end });
+        }
+        return segments;
     }
 
     // ---- JellyDisc ----
@@ -1256,7 +1308,7 @@ public sealed class JellyfinClient
     /// server has none (404 is "nothing to show", never an error).
     /// </summary>
     public async Task<DiscMenuDocument?> DiscMenuAsync(string itemId, CancellationToken ct = default) =>
-        await SendAsync(AuthorizedRequest(Url($"/DiscMenus/{itemId}/Menu")), ct, allowNotFound: true).ConfigureAwait(false) is { } data
+        IsJellyfin && await SendAsync(AuthorizedRequest(Url($"/DiscMenus/{itemId}/Menu")), ct, allowNotFound: true).ConfigureAwait(false) is { } data
             ? Decode<DiscMenuDocument>(data)
             : null;
 

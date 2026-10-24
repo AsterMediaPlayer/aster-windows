@@ -167,6 +167,8 @@ public partial class ShellViewModel : ViewModelBase, INavigator, IDisposable
 
     private static async Task<bool> CheckChannelsAsync(JellyfinClient client)
     {
+        // Channels are playlist tags in Jellyfin's shape; Emby's differ.
+        if (!client.IsJellyfin) return false;
         try { return Aster.Core.Channels.ChannelLoader.TaggedChannels(await client.PlaylistsAsync("Video")).Count > 0; }
         catch (Exception error) when (error is JellyfinException or System.Net.Http.HttpRequestException or TimeoutException) { return false; }
     }

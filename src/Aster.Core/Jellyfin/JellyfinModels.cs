@@ -31,6 +31,40 @@ public sealed record PublicSystemInfo
     public string? Version { get; init; }
     public string? Id { get; init; }
     public string? LocalAddress { get; init; }
+
+    /// <summary>"Jellyfin Server" from Jellyfin; Emby sends none.</summary>
+    public string? ProductName { get; init; }
+
+    /// <summary>Which server answered.</summary>
+    public ServerKind Kind =>
+        ProductName?.Contains("Jellyfin", StringComparison.OrdinalIgnoreCase) == true ? ServerKind.Jellyfin : ServerKind.Emby;
+}
+
+/// <summary>
+/// The two servers Aster signs in to. Jellyfin began as a fork of Emby, so
+/// they share almost everything; where they differ (a few routes, and what
+/// each has that the other doesn't) the client and the app ask this. The
+/// Apple app's ServerKind.
+/// </summary>
+[JsonConverter(typeof(JsonStringEnumConverter<ServerKind>))]
+public enum ServerKind
+{
+    Jellyfin,
+    Emby,
+}
+
+/// <summary>An id as text (Jellyfin) or a number (Emby's studios, genres and people), as text either way.</summary>
+public sealed class FlexibleIdConverter : JsonConverter<string>
+{
+    public override string? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) => reader.TokenType switch
+    {
+        JsonTokenType.String => reader.GetString(),
+        JsonTokenType.Number => reader.TryGetInt64(out var whole) ? whole.ToString(CultureInfo.InvariantCulture) : reader.GetDouble().ToString(CultureInfo.InvariantCulture),
+        JsonTokenType.Null => null,
+        _ => throw new JsonException($"An id can't be {reader.TokenType}."),
+    };
+
+    public override void Write(Utf8JsonWriter writer, string value, JsonSerializerOptions options) => writer.WriteStringValue(value);
 }
 
 public sealed record JellyfinUser
@@ -97,6 +131,7 @@ public sealed record UserItemData
 
 public sealed record PersonInfo
 {
+    [JsonConverter(typeof(FlexibleIdConverter))]
     public required string Id { get; init; }
     public string? Name { get; init; }
     public string? Role { get; init; }
@@ -107,6 +142,8 @@ public sealed record PersonInfo
 public sealed record NameGuidPair
 {
     public string? Name { get; init; }
+
+    [JsonConverter(typeof(FlexibleIdConverter))]
     public string? Id { get; init; }
 }
 
@@ -115,6 +152,9 @@ public sealed record ChapterInfo
     public long StartPositionTicks { get; init; }
     public string? Name { get; init; }
     public string? ImageTag { get; init; }
+
+    /// <summary>Emby's mark on a chapter: Chapter, or IntroStart, IntroEnd and CreditsStart (its stand-in for media segments).</summary>
+    public string? MarkerType { get; init; }
 }
 
 public sealed record MediaStream

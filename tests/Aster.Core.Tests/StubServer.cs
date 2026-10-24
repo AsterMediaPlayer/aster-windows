@@ -15,8 +15,8 @@ sealed class StubServer : HttpMessageHandler
 
     public StubServer(Func<Request, (HttpStatusCode, string)> respond) => this.respond = respond;
 
-    public JellyfinClient Client(string? token = "token", string? userId = "user") =>
-        new(new Uri("https://jellyfin.example/base/"), token, userId, new HttpClient(this));
+    public JellyfinClient Client(string? token = "token", string? userId = "user", ServerKind kind = ServerKind.Jellyfin) =>
+        new(new Uri("https://jellyfin.example/base/"), token, userId, new HttpClient(this), kind);
 
     protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage message, CancellationToken ct)
     {

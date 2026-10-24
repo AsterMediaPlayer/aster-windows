@@ -27,7 +27,7 @@
                     <TextBlock Text="Audio &amp; Subtitles" VerticalAlignment="Center" />
                 </DockPanel>
             </Button>
-            <Button Classes="row" Command="{Binding OpenCommand}" CommandParameter="{x:Static vm:SettingsPage.DiscMenus}">
+            <Button Classes="row" Command="{Binding OpenCommand}" CommandParameter="{x:Static vm:SettingsPage.DiscMenus}" IsVisible="{Binding IsJellyfin}">
                 <DockPanel>
                     <TextBlock Classes="chevron" />
                     <TextBlock Classes="icon" Text="&#xE8B2;" />

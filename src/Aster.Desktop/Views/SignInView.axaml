@@ -7,7 +7,7 @@
     <StackPanel Width="380" Spacing="8" HorizontalAlignment="Center" VerticalAlignment="Center">
         <Image Source="/Assets/Images/AsterLogo.png" Stretch="Uniform" HorizontalAlignment="Stretch" Margin="0,0,0,24" />
 
-        <TextBlock Text="Server address" />
+        <TextBlock Text="Jellyfin or Emby server address" />
         <TextBox Text="{Binding ServerAddress}" />
 
         <TextBlock Text="User name" Margin="0,8,0,0" />

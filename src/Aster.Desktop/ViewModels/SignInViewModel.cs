@@ -54,11 +54,12 @@ public partial class SignInViewModel : ViewModelBase
         }
         try
         {
-            var server = new JellyfinClient(url);
-            var info = await server.PublicSystemInfoAsync();
+            var info = await new JellyfinClient(url).PublicSystemInfoAsync();
+            // Jellyfin or Emby, from its own reply: the few routes that differ follow.
+            var server = new JellyfinClient(url, kind: info.Kind);
             var result = await server.AuthenticateAsync(UserName.Trim(), Password);
             CancelQuickConnect();
-            Finish(server, url, info.ServerName, result);
+            Finish(server, url, info, result);
         }
         catch (Exception error) when (error is JellyfinException or HttpRequestException or TimeoutException)
         {
@@ -87,8 +88,13 @@ public partial class SignInViewModel : ViewModelBase
         var ct = cancel.Token;
         try
         {
-            var server = new JellyfinClient(url);
-            var info = await server.PublicSystemInfoAsync(ct);
+            var info = await new JellyfinClient(url).PublicSystemInfoAsync(ct);
+            var server = new JellyfinClient(url, kind: info.Kind);
+            if (info.Kind == ServerKind.Emby)
+            {
+                Message = "Emby has no Quick Connect: sign in with your user name and password.";
+                return;
+            }
             if (!await server.QuickConnectEnabledAsync(ct))
             {
                 Message = "Quick Connect is turned off on this server. An administrator can turn it on in the Dashboard, under General.";
@@ -103,7 +109,7 @@ public partial class SignInViewModel : ViewModelBase
                 if (!state.Authenticated) continue;
                 var result = await server.AuthenticateWithQuickConnectAsync(initiated.Secret, ct);
                 QuickConnectCode = null;
-                Finish(server, url, info.ServerName, result);
+                Finish(server, url, info, result);
                 return;
             }
         }
@@ -134,12 +140,13 @@ public partial class SignInViewModel : ViewModelBase
         QuickConnectCode = null;
     }
 
-    private void Finish(JellyfinClient server, Uri url, string? serverName, AuthenticationResult result)
+    private void Finish(JellyfinClient server, Uri url, PublicSystemInfo info, AuthenticationResult result)
     {
         var session = new StoredSession
         {
             ServerUrl = url,
-            ServerName = serverName,
+            ServerName = info.ServerName,
+            ServerKind = info.Kind,
             UserId = result.User.Id,
             UserName = result.User.Name,
             AccessToken = result.AccessToken,

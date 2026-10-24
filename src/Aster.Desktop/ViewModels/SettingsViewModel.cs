@@ -236,6 +236,12 @@ public sealed partial class SettingsViewModel : ViewModelBase
 
     // ---- Account ----
 
+    /// <summary>Disc menus come from a Jellyfin plugin: their page hides on Emby.</summary>
+    public bool IsJellyfin => navigator.Client.IsJellyfin;
+
+    /// <summary>"Jellyfin version" or "Emby version".</summary>
+    public string ServerVersionLabel => $"{navigator.Client.Kind} version";
+
     public string UserName { get; }
     public string ServerName { get; }
     public string ServerAddress { get; }

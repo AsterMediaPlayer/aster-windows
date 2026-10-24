@@ -35,7 +35,7 @@ public partial class MainViewModel : ViewModelBase
         developmentSession = development is not null;
         if ((development ?? StoredSession.Load()) is { } session)
         {
-            var client = new JellyfinClient(session.ServerUrl, session.AccessToken, session.UserId);
+            var client = new JellyfinClient(session.ServerUrl, session.AccessToken, session.UserId, kind: session.Kind);
             ShowShell(client, session);
             if (tab is { } startTab) shell!.ShowTab(startTab);
             if (sort is { } startSort && shell!.CurrentPage is BrowsePageViewModel page) page.SortIndex = (int)startSort;
@@ -52,7 +52,7 @@ public partial class MainViewModel : ViewModelBase
     /// <summary>
     /// In a debug build, ASTER_SERVER, ASTER_TOKEN and ASTER_USER_ID sign in
     /// without touching the saved session, for trying the app against a
-    /// server with an API key.
+    /// server with an API key; ASTER_SERVER_KIND=emby for an Emby server.
     /// </summary>
     private static StoredSession? DevelopmentSession()
     {
@@ -62,7 +62,8 @@ public partial class MainViewModel : ViewModelBase
         var user = Environment.GetEnvironmentVariable("ASTER_USER_ID");
         if (server is not null && token is not null && user is not null)
         {
-            return new StoredSession { ServerUrl = new Uri(server), UserId = user, UserName = "Development", AccessToken = token };
+            var kind = Enum.TryParse<ServerKind>(Environment.GetEnvironmentVariable("ASTER_SERVER_KIND"), ignoreCase: true, out var named) ? named : ServerKind.Jellyfin;
+            return new StoredSession { ServerUrl = new Uri(server), UserId = user, UserName = "Development", AccessToken = token, ServerKind = kind };
         }
 #endif
         return null;

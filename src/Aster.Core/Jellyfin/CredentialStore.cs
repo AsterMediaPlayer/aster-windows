@@ -105,6 +105,12 @@ public sealed record StoredSession
     public required string UserName { get; init; }
     public required string AccessToken { get; init; }
 
+    /// <summary>Jellyfin or Emby; sessions saved before Emby was supported have none, and are Jellyfin.</summary>
+    public ServerKind? ServerKind { get; init; }
+
+    [System.Text.Json.Serialization.JsonIgnore]
+    public ServerKind Kind => ServerKind ?? Jellyfin.ServerKind.Jellyfin;
+
     private const string Account = "session";
 
     /// <summary>
