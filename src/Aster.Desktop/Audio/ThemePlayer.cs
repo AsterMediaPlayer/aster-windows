@@ -44,8 +44,23 @@ public sealed partial class ThemePlayer : ObservableObject, IDisposable
     /// <summary>The volume fades under way: the music, and any still fading out.</summary>
     private readonly VolumeFades fades = new();
 
-    /// <summary>The theme video, kept to start again after a title has played.</summary>
-    private Uri? videoUrl;
+    /// <summary>
+    /// What loops behind the page: the title's theme video, or an anime
+    /// opening standing in (a stretch of its episode between two times, with
+    /// its sound or not). Kept to start again after a title has played.
+    /// </summary>
+    private sealed record VideoSource(Uri Url, double? Start = null, double? End = null, bool Sound = false);
+
+    private VideoSource? videoSource;
+
+    /// <summary>The theme's loading, which an opening standing in waits for: the title's own theme video always wins.</summary>
+    private Task loaded = Task.CompletedTask;
+
+    /// <summary>Which opening stands in as the theme (its video, or its song); null for the title's own theme, or none.</summary>
+    private string? openingId;
+
+    /// <summary>The music is an opening's song standing in, not the title's theme song.</summary>
+    private bool musicIsOpening;
 
     private DispatcherTimer? hiding;
     private bool suspended;
@@ -108,7 +123,7 @@ public sealed partial class ThemePlayer : ObservableObject, IDisposable
         Release();
         key = themeKey;
         loading = new CancellationTokenSource();
-        _ = LoadAsync(item.Id, themeKey, wantsMusic, wantsVideo, loading.Token);
+        loaded = LoadAsync(item.Id, themeKey, wantsMusic, wantsVideo, loading.Token);
     }
 
     private async Task LoadAsync(string itemId, string themeKey, bool wantsMusic, bool wantsVideo, CancellationToken ct)
@@ -129,10 +144,71 @@ public sealed partial class ThemePlayer : ObservableObject, IDisposable
         if (song is not null) StartMusic(client.AudioStreamUrl(song.Id));
         if (video is not null)
         {
-            videoUrl = client.VideoStreamUrl(video.Id);
-            if (!suspended) StartVideo(videoUrl);
+            videoSource = new VideoSource(client.VideoStreamUrl(video.Id));
+            if (!suspended) StartVideo(videoSource);
         }
     }
+
+    // ---- An anime opening standing in ----
+
+    /// <summary>An anime opening (video or song) is standing in as the theme.</summary>
+    public bool IsShowingOpening => openingId is not null;
+
+    /// <summary>
+    /// For a show with no theme video of its own (<paramref name="owner"/>'s,
+    /// in view): loops an opening behind the page instead, from
+    /// <paramref name="start"/> to <paramref name="end"/> seconds of its file
+    /// when it's a stretch of an episode. Waits for the show's own theme
+    /// video, which always wins; another opening standing in is swapped out
+    /// (another season picked). With <paramref name="sound"/> it plays as
+    /// quietly as theme music, and is the song in place of any theme song.
+    /// A port of the Apple app's showOpeningIfNoVideo.
+    /// </summary>
+    public async void ShowOpening(object owner, BaseItem item, string id, Uri url, double? start = null, double? end = null, bool sound = false)
+    {
+        var themeKey = item.SeriesId ?? item.Id;
+        await loaded;
+        if (!ReferenceEquals(owner, page) || key != themeKey || !CanStandIn(id)) return;
+        DropVideo();
+        openingId = id;
+        // The opening is the song now (two at once would clash), and an earlier opening's song gives way.
+        if ((sound || musicIsOpening) && music is { } song)
+        {
+            music = null;
+            musicIsOpening = false;
+            fades.Fade(song, to: 0, seconds: 0.6, then: song.Dispose);
+        }
+        videoSource = new VideoSource(url, start, end, sound);
+        if (!suspended) StartVideo(videoSource);
+    }
+
+    /// <summary>
+    /// An opening the OP/ED plugin has only the song of: plays it as the
+    /// page's theme music, in place of any theme song or opening video
+    /// standing in. The show's own theme video still wins.
+    /// </summary>
+    public async void ShowOpeningSong(object owner, BaseItem item, string id, Uri url)
+    {
+        var themeKey = item.SeriesId ?? item.Id;
+        await loaded;
+        if (!ReferenceEquals(owner, page) || key != themeKey || !CanStandIn(id)) return;
+        if (openingId is not null)
+        {
+            DropVideo();
+            videoSource = null;
+        }
+        if (music is { } song)
+        {
+            music = null;
+            fades.Fade(song, to: 0, seconds: 0.6, then: song.Dispose);
+        }
+        openingId = id;
+        StartMusic(url);
+        musicIsOpening = true;
+    }
+
+    /// <summary>Nothing standing in yet, or another opening that may be swapped for this one; never the title's own theme video.</summary>
+    private bool CanStandIn(string id) => openingId != id && (videoSource is null || openingId is not null);
 
     /// <summary>A title starts playing over the window: the music goes quiet and the video lets go of its view.</summary>
     public void Suspend()
@@ -152,7 +228,7 @@ public sealed partial class ThemePlayer : ObservableObject, IDisposable
             Try(() => paused.SetProperty("pause", false));
             fades.Fade(paused, to: Volume, seconds: 0.8);
         }
-        if (videoUrl is { } url && Video is null) StartVideo(url);
+        if (videoSource is { } source && Video is null) StartVideo(source);
     }
 
     /// <summary>Ends the theme: the music fades out and the video goes.</summary>
@@ -168,7 +244,9 @@ public sealed partial class ThemePlayer : ObservableObject, IDisposable
             fades.Fade(ending, to: 0, seconds: 0.6, then: ending.Dispose);
         }
         DropVideo();
-        videoUrl = null;
+        videoSource = null;
+        openingId = null;
+        musicIsOpening = false;
         key = null;
     }
 
@@ -202,7 +280,7 @@ public sealed partial class ThemePlayer : ObservableObject, IDisposable
 
     // ---- Video ----
 
-    private void StartVideo(Uri url)
+    private void StartVideo(VideoSource source)
     {
         MpvPlayer player;
         try
@@ -212,7 +290,9 @@ public sealed partial class ThemePlayer : ObservableObject, IDisposable
                 // Frames go to the shell's MpvVideoView through the render API.
                 ["vo"] = "libmpv",
                 ["hwdec"] = MpvHardware.Decoding,
-                ["aid"] = "no",
+                // Silent, but for an opening with its sound, as quiet as theme music.
+                ["aid"] = source.Sound ? "auto" : "no",
+                ["volume"] = source.Sound ? Volume.ToString(System.Globalization.CultureInfo.InvariantCulture) : "100",
                 ["sid"] = "no",
                 ["sub-auto"] = "no",
                 ["osc"] = "no",
@@ -235,20 +315,33 @@ public sealed partial class ThemePlayer : ObservableObject, IDisposable
             {
                 if (Video != player) return;
                 DropVideo();
-                videoUrl = null;
+                videoSource = null;
             });
         };
         Video = player;
-        _ = LoadVideoAsync(player, url);
+        _ = LoadVideoAsync(player, source);
     }
 
-    /// <summary>mpv's video output fails for good on a file opened before the view gives it somewhere to draw.</summary>
-    private static async Task LoadVideoAsync(MpvPlayer player, Uri url)
+    /// <summary>
+    /// mpv's video output fails for good on a file opened before the view
+    /// gives it somewhere to draw. A stretch of a file loops between its
+    /// two times (mpv's A-B loop).
+    /// </summary>
+    private static async Task LoadVideoAsync(MpvPlayer player, VideoSource source)
     {
         try
         {
             await player.RenderContextReady.ConfigureAwait(false);
-            await player.CommandAsync("loadfile", url.AbsoluteUri).ConfigureAwait(false);
+            if (source.Start is { } start && source.End is { } end)
+            {
+                var a = start.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture);
+                var b = end.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture);
+                await player.CommandAsync("loadfile", source.Url.AbsoluteUri, "replace", "-1", $"start={a},ab-loop-a={a},ab-loop-b={b}").ConfigureAwait(false);
+            }
+            else
+            {
+                await player.CommandAsync("loadfile", source.Url.AbsoluteUri).ConfigureAwait(false);
+            }
         }
         catch (Exception error) when (error is MpvException or ObjectDisposedException) { }
     }

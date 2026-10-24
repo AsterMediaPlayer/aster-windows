@@ -30,6 +30,9 @@ public sealed record AppSettings
     /// <summary>A title's theme video, looped silently behind its page.</summary>
     public bool ThemeVideos { get; init; }
 
+    /// <summary>An anime opening looping behind a show's page (with no theme video of its own) plays its sound, quietly.</summary>
+    public bool OpeningSound { get; init; }
+
     /// <summary>Play on a title with a JellyDisc menu opens its menu, like putting in the disc.</summary>
     public bool PreferDiscMenu { get; init; }
 

@@ -2,8 +2,7 @@
 // TV app: full-bleed artwork, title and actions, then shelves; a show's
 // page in tabs. A port of the Apple app's ItemDetailView and DetailModel.
 //
-// Not yet ported: an anime opening looping behind a series with no theme
-// video of its own, the Now Playing
+// Not yet ported: the Now Playing
 // panel for openings and endings (they play full screen, one at a time),
 // Watch OP and Watch ED, playlists, recordings and downloads.
 
@@ -84,8 +83,73 @@ public partial class DetailViewModel : ViewModelBase, IRefreshable
     /// <summary>The theme music and video; the backdrop fades from over the video as it plays.</summary>
     public Aster.Desktop.Audio.ThemePlayer Theme => navigator.Theme;
 
-    /// <summary>Plays the title's theme, while this page is the one in view.</summary>
-    public void ShowTheme() => navigator.Theme.Show(this, Item);
+    /// <summary>Plays the title's theme, while this page is the one in view: for anime without a theme video, an opening.</summary>
+    public void ShowTheme()
+    {
+        navigator.Theme.Show(this, Item);
+        ShowOpening();
+    }
+
+    /// <summary>An anime show's openings from the OP/ED plugin, or found in its episodes' chapters, for one to loop behind the page.</summary>
+    private IReadOnlyList<OpEdTheme> pluginThemes = [];
+    private IReadOnlyList<ThemeClip> openingClips = [];
+
+    /// <summary>
+    /// Anime with no theme video of its own loops an opening behind the page
+    /// instead (with Settings' Theme videos), never one marked as a spoiler
+    /// or NSFW: the plugin's opening for the season picked, then one found in
+    /// that season's chapters, then the show's first opening of either kind.
+    /// With "Opening plays with sound" it has its sound, unless a song or book
+    /// is playing. A port of the Apple app's showOpening.
+    /// </summary>
+    private void ShowOpening()
+    {
+        var settings = Aster.Core.AppSettings.Current;
+        if (!settings.ThemeVideos || Item.Kind != ItemKind.Series || pluginThemes.Count + openingClips.Count == 0) return;
+        var sound = settings.OpeningSound && !navigator.Audio.IsPlaying;
+        if (SelectedSeasonId is { } seasonId)
+        {
+            if (PreferredOpening(pluginThemes.Where(t => t.SeasonId == seasonId)) is { } seasonTheme && ShowOpening(seasonTheme, sound)) return;
+            var number = seasons.FirstOrDefault(s => s.Id == seasonId)?.IndexNumber;
+            if (openingClips.FirstOrDefault(c => c.Season == number) is { } seasonClip)
+            {
+                ShowOpening(seasonClip, sound);
+                return;
+            }
+            // Nothing for this season: whatever opening is already playing stays.
+            if (navigator.Theme.IsShowingOpening) return;
+        }
+        if (PreferredOpening(pluginThemes) is { } theme && ShowOpening(theme, sound)) return;
+        if (openingClips.FirstOrDefault() is { } clip) ShowOpening(clip, sound);
+    }
+
+    /// <summary>The first opening that plays and isn't flagged, one with video before one with only its song.</summary>
+    private static OpEdTheme? PreferredOpening(IEnumerable<OpEdTheme> themes)
+    {
+        var playable = themes.Where(t => t.IsOpening && t.PlayablePath is not null && !t.Spoiler && !t.Nsfw).ToList();
+        return playable.FirstOrDefault(t => t.VideoMp4Url is not null) ?? playable.FirstOrDefault();
+    }
+
+    /// <summary>A plugin opening behind the page: its video, or with only its song, the song as the theme music when openings have sound.</summary>
+    private bool ShowOpening(OpEdTheme theme, bool sound)
+    {
+        if (theme.VideoMp4Url is { } video)
+        {
+            navigator.Theme.ShowOpening(this, Item, theme.Id, Client.OpEdMediaUrl(video), sound: sound);
+            return true;
+        }
+        if (sound && theme.AudioM4aUrl is { } song)
+        {
+            navigator.Theme.ShowOpeningSong(this, Item, theme.Id, Client.OpEdMediaUrl(song));
+            return true;
+        }
+        return false;
+    }
+
+    /// <summary>An opening found in its episode's chapters: just that stretch of the episode, looping.</summary>
+    private void ShowOpening(ThemeClip clip, bool sound) =>
+        navigator.Theme.ShowOpening(this, Item, clip.Id, Client.VideoStreamUrl(clip.Episode.Id),
+            clip.StartTicks / 10_000_000.0, clip.EndTicks / 10_000_000.0, sound);
 
     // The page's stub becomes the whole title as it loads: an episode's series is known then.
     partial void OnItemChanged(BaseItem value) => ShowTheme();
@@ -218,6 +282,7 @@ public partial class DetailViewModel : ViewModelBase, IRefreshable
             var found = await themes;
             Openings = found.Where(c => c.IsOpening).ToList();
             Endings = found.Where(c => !c.IsOpening).ToList();
+            ShowOpening();
             UpdateSections();
 
             // Opened from a banner's Play: play now, with this page behind.
@@ -277,6 +342,8 @@ public partial class DetailViewModel : ViewModelBase, IRefreshable
         SelectedSeasonId = seasonId;
         UpdateSeasonChoices();
         ShowEpisodes(await OrEmpty(Client.EpisodesAsync(seriesId, seasonId)));
+        // The opening behind the page follows the season picked.
+        if (Item.Kind == ItemKind.Series) ShowOpening();
         // A show's menu can be its season's: follow the season picked.
         if (Item.Kind == ItemKind.Series && discMenuItemId != Item.Id) await LoadDiscMenuAsync();
     }
@@ -333,6 +400,7 @@ public partial class DetailViewModel : ViewModelBase, IRefreshable
         var themes = (await Client.OpEdThemesAsync(show.Id) ?? []).Where(t => t.PlayablePath is not null || t.IsPreparing).ToList();
         if (themes.Count > 0)
         {
+            pluginThemes = themes;
             var allSeasons = await OrEmpty(Client.SeasonsAsync(show.Id));
             // A season's name only when there's more than one, since OP 1 comes round again each season.
             var named = allSeasons.Count(s => (s.IndexNumber ?? 0) > 0) > 1;
@@ -349,7 +417,9 @@ public partial class DetailViewModel : ViewModelBase, IRefreshable
         IReadOnlyList<BaseItem> withChapters;
         try { withChapters = await Client.EpisodesWithChaptersAsync(show.Id); }
         catch (Exception error) when (IsServerError(error)) { return []; }
-        return OpeningsEndings.Find(withChapters).Select(clip => OpeningEndingCard.Clip(Client, clip, show.DisplayTitle, PlayTheme)).ToList();
+        var clips = OpeningsEndings.Find(withChapters);
+        openingClips = clips.Where(c => c.Kind == ThemeKind.Opening).ToList();
+        return clips.Select(clip => OpeningEndingCard.Clip(Client, clip, show.DisplayTitle, PlayTheme)).ToList();
     }
 
     /// <summary>An opening or ending, full screen; the page needn't follow, since nothing it shows changes.</summary>

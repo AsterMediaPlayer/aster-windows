@@ -30,6 +30,7 @@ public static class SettingsSync
         new("themeCards", s => s.ThemeCards, (s, on) => s with { ThemeCards = on }),
         new("themeMusic", s => s.ThemeMusic, (s, on) => s with { ThemeMusic = on }),
         new("themeVideos", s => s.ThemeVideos, (s, on) => s with { ThemeVideos = on }),
+        new("openingSound", s => s.OpeningSound, (s, on) => s with { OpeningSound = on }),
         new("preferDiscMenu", s => s.PreferDiscMenu, (s, on) => s with { PreferDiscMenu = on }),
         new("discMenuSounds", s => s.DiscMenuSounds, (s, on) => s with { DiscMenuSounds = on }),
     ];

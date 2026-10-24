@@ -155,6 +155,17 @@
                     <Border Classes="note">
                         <TextBlock Text="Plays a title's theme song quietly, or loops its theme video behind the page, when your library has them. Theme music stays off while you are listening to music." />
                     </Border>
+
+                    <TextBlock Classes="section" Text="ANIME" />
+                    <Button Classes="row" Command="{Binding FlipCommand}" CommandParameter="OpeningSound">
+                        <DockPanel>
+                            <TextBlock Classes="value" Text="{Binding OpeningSound, Converter={x:Static c:Converters.OnOff}}" />
+                            <TextBlock Text="Opening plays with sound" VerticalAlignment="Center" />
+                        </DockPanel>
+                    </Button>
+                    <Border Classes="note">
+                        <TextBlock Text="Anime with no theme video of its own loops its first opening behind the series page, when Theme videos is on. With sound, it plays quietly, like theme music." />
+                    </Border>
                 </StackPanel>
 
                 <!-- Account: who and where, then Switch User and Change Server, which ask first. -->
