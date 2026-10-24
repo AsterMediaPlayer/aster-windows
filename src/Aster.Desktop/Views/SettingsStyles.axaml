@@ -1,0 +1,118 @@
+<!-- Settings laid out as the Apple TV's: grey capital headings, each setting a
+     rounded row the width of the page (its value on the right, a chevron when
+     it opens a list), notes in quieter rows of their own, and the keyboard's
+     (or pointer's) row turned white, dark text on it. -->
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Aster.Desktop.ViewModels">
+
+    <Styles.Resources>
+        <!-- A list's choice in a row's menu, the one chosen ticked. -->
+        <ControlTheme x:Key="SettingChoice" TargetType="MenuItem" BasedOn="{StaticResource {x:Type MenuItem}}" x:DataType="vm:TrackChoice">
+            <Setter Property="Header" Value="{Binding Title}" />
+            <Setter Property="Command" Value="{Binding Select}" />
+            <Setter Property="ToggleType" Value="Radio" />
+            <Setter Property="IsChecked" Value="{Binding IsSelected, Mode=OneWay}" />
+        </ControlTheme>
+    </Styles.Resources>
+
+    <Style Selector="TextBlock.pageTitle">
+        <Setter Property="FontSize" Value="40" />
+        <Setter Property="FontWeight" Value="Bold" />
+        <Setter Property="Margin" Value="22,0,0,18" />
+    </Style>
+    <Style Selector="TextBlock.section">
+        <Setter Property="FontSize" Value="15" />
+        <Setter Property="Foreground" Value="#73FFFFFF" />
+        <Setter Property="Margin" Value="22,18,0,8" />
+    </Style>
+
+    <Style Selector="Button.row">
+        <Setter Property="Background" Value="#29FFFFFF" />
+        <Setter Property="Foreground" Value="White" />
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="Padding" Value="22,13" />
+        <Setter Property="MinHeight" Value="52" />
+        <Setter Property="CornerRadius" Value="26" />
+        <Setter Property="FontSize" Value="17" />
+        <Setter Property="Margin" Value="0,0,0,8" />
+        <Setter Property="FocusAdorner" Value="{x:Null}" />
+        <Setter Property="RenderTransformOrigin" Value="50%,50%" />
+        <Setter Property="Transitions">
+            <Transitions>
+                <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.12" />
+            </Transitions>
+        </Setter>
+    </Style>
+    <Style Selector="Button.row:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="#F2FFFFFF" />
+        <Setter Property="Foreground" Value="Black" />
+    </Style>
+    <Style Selector="Button.row:focus-visible">
+        <Setter Property="RenderTransform" Value="scale(1.012)" />
+    </Style>
+    <Style Selector="Button.row:focus-visible /template/ ContentPresenter">
+        <Setter Property="Background" Value="White" />
+        <Setter Property="Foreground" Value="Black" />
+        <Setter Property="BoxShadow" Value="0 8 24 0 #80000000" />
+    </Style>
+    <Style Selector="Button.row:disabled /template/ ContentPresenter">
+        <Setter Property="Background" Value="#1AFFFFFF" />
+        <Setter Property="Foreground" Value="#66FFFFFF" />
+    </Style>
+
+    <!-- A row's value and chevron: grey, darker once the row is white. -->
+    <Style Selector="TextBlock.value">
+        <Setter Property="DockPanel.Dock" Value="Right" />
+        <Setter Property="Foreground" Value="#99FFFFFF" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="Margin" Value="24,0,0,0" />
+        <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+    </Style>
+    <Style Selector="TextBlock.chevron">
+        <Setter Property="DockPanel.Dock" Value="Right" />
+        <Setter Property="Text" Value="&#xE76C;" />
+        <Setter Property="FontFamily" Value="{StaticResource IconFont}" />
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="Foreground" Value="#99FFFFFF" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="Margin" Value="16,0,0,0" />
+    </Style>
+    <Style Selector="Button.row:pointerover TextBlock.value, Button.row:focus-visible TextBlock.value, Button.row:pointerover TextBlock.chevron, Button.row:focus-visible TextBlock.chevron">
+        <Setter Property="Foreground" Value="#8C000000" />
+    </Style>
+    <Style Selector="TextBlock.icon">
+        <Setter Property="FontFamily" Value="{StaticResource IconFont}" />
+        <Setter Property="FontSize" Value="20" />
+        <Setter Property="Width" Value="28" />
+        <Setter Property="Margin" Value="0,0,16,0" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+
+    <!-- A fact, not a choice (the server's name, the app's version): a row's look, out of the keyboard's way. -->
+    <Style Selector="Border.fact">
+        <Setter Property="Background" Value="#29FFFFFF" />
+        <Setter Property="CornerRadius" Value="26" />
+        <Setter Property="Padding" Value="22,13" />
+        <Setter Property="MinHeight" Value="52" />
+        <Setter Property="Margin" Value="0,0,0,8" />
+    </Style>
+    <Style Selector="Border.fact TextBlock">
+        <Setter Property="FontSize" Value="17" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+
+    <Style Selector="Border.note">
+        <Setter Property="Background" Value="#17FFFFFF" />
+        <Setter Property="CornerRadius" Value="26" />
+        <Setter Property="Padding" Value="22,13" />
+        <Setter Property="Margin" Value="0,0,0,8" />
+    </Style>
+    <Style Selector="Border.note > TextBlock">
+        <Setter Property="FontSize" Value="14" />
+        <Setter Property="Foreground" Value="#99FFFFFF" />
+        <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+</Styles>

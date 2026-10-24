@@ -24,6 +24,9 @@ public static class Converters
     /// <summary>Text in capitals, in the reader's language: a guide's group name over its first channel.</summary>
     public static readonly IValueConverter Upper = new FuncValueConverter<string?, string?>(text => text?.ToUpper(System.Globalization.CultureInfo.CurrentCulture));
 
+    /// <summary>A switch's state on a settings row.</summary>
+    public static readonly IValueConverter OnOff = new FuncValueConverter<bool, string>(on => on ? "On" : "Off");
+
     /// <summary>A disc menu's Back button: a step back, or closing the menu from its first screen.</summary>
     public static readonly IValueConverter BackTip = new FuncValueConverter<bool, string>(canGoBack => canGoBack ? "Back" : "Close");
 

@@ -16,11 +16,22 @@ public sealed record SettingOption<T>(string Title, T Value)
     public override string ToString() => Title;
 }
 
+/// <summary>A page of Settings, opened from its list.</summary>
+public enum SettingsPage
+{
+    Playback,
+    AudioSubtitles,
+    DiscMenus,
+    TitlePages,
+    Account,
+    About,
+}
+
 /// <summary>
-/// The Settings tab: the Apple app's Playback, Title Pages, Audio &amp;
-/// Subtitles, Account and About pages, on one page as the Mac's Settings
-/// window has them. The Up Next, intro, theme and styled-subtitle switches
-/// follow the user between
+/// The Settings tab, as the Apple TV's: a list of pages (Playback, Audio
+/// &amp; Subtitles, Disc Menus, Title Pages, Account, About), each opened
+/// over it. This holds what they all show and change. The Up Next, intro,
+/// theme, disc menu and styled-subtitle switches follow the user between
 /// devices (<see cref="SettingsSync"/>); the languages are the user's own
 /// Jellyfin settings, shared with the web app.
 /// </summary>
@@ -44,6 +55,31 @@ public sealed partial class SettingsViewModel : ViewModelBase
         _ = LoadAsync();
     }
 
+    /// <summary>Opens one of the pages over the list.</summary>
+    [RelayCommand] private void Open(SettingsPage page) => navigator.Push(new SettingsPageViewModel(this, page));
+
+    /// <summary>Turns a switch over, by its property's name: a row's Enter or click.</summary>
+    [RelayCommand]
+    private void Flip(string setting)
+    {
+        switch (setting)
+        {
+            case nameof(FullScreenPlayback): FullScreenPlayback = !FullScreenPlayback; break;
+            case nameof(AutoplayNext): AutoplayNext = !AutoplayNext; break;
+            case nameof(AutoSkipIntro): AutoSkipIntro = !AutoSkipIntro; break;
+            case nameof(StyledSubtitles): StyledSubtitles = !StyledSubtitles; break;
+            case nameof(ThemeCards): ThemeCards = !ThemeCards; break;
+            case nameof(ThemeMusic): ThemeMusic = !ThemeMusic; break;
+            case nameof(ThemeVideos): ThemeVideos = !ThemeVideos; break;
+            case nameof(PreferDiscMenu): PreferDiscMenu = !PreferDiscMenu; break;
+            case nameof(DiscMenuSounds): DiscMenuSounds = !DiscMenuSounds; break;
+        }
+    }
+
+    /// <summary>A list's choices for its menu, the one chosen ticked.</summary>
+    private static IReadOnlyList<TrackChoice> Choices<T>(IReadOnlyList<SettingOption<T>> options, SettingOption<T>? current, Action<SettingOption<T>> pick) =>
+        options.Select((option, i) => new TrackChoice(i, option.Title, option == current, new RelayCommand(() => pick(option)))).ToList();
+
     // ---- Playback ----
 
     public IReadOnlyList<SettingOption<int>> Bitrates { get; } =
@@ -56,7 +92,11 @@ public sealed partial class SettingsViewModel : ViewModelBase
         new("4 Mbps", 4_000_000),
     ];
 
-    [ObservableProperty] public partial SettingOption<int>? Bitrate { get; set; }
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(BitrateChoices))]
+    public partial SettingOption<int>? Bitrate { get; set; }
+
+    public IReadOnlyList<TrackChoice> BitrateChoices => Choices(Bitrates, Bitrate, b => Bitrate = b);
     [ObservableProperty] public partial bool FullScreenPlayback { get; set; }
     [ObservableProperty] public partial bool AutoplayNext { get; set; }
     [ObservableProperty] public partial bool AutoSkipIntro { get; set; }
@@ -117,15 +157,32 @@ public sealed partial class SettingsViewModel : ViewModelBase
         new("Hebrew", "heb"), new("Thai", "tha"), new("Vietnamese", "vie"), new("Greek", "gre"), new("Czech", "cze"), new("Hungarian", "hun"),
     ];
 
-    [ObservableProperty] public partial IReadOnlyList<SettingOption<string>> AudioLanguages { get; set; } = Languages;
-    [ObservableProperty] public partial IReadOnlyList<SettingOption<string>> SubtitleLanguages { get; set; } = Languages;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(AudioLanguageChoices))]
+    public partial IReadOnlyList<SettingOption<string>> AudioLanguages { get; set; } = Languages;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(SubtitleLanguageChoices))]
+    public partial IReadOnlyList<SettingOption<string>> SubtitleLanguages { get; set; } = Languages;
 
     public IReadOnlyList<SettingOption<SubtitleMode>> SubtitleModes { get; } =
         Enum.GetValues<SubtitleMode>().Select(m => new SettingOption<SubtitleMode>(m.Title, m)).ToList();
 
-    [ObservableProperty] public partial SettingOption<string>? AudioLanguage { get; set; }
-    [ObservableProperty] public partial SettingOption<string>? SubtitleLanguage { get; set; }
-    [ObservableProperty] public partial SettingOption<SubtitleMode>? SubtitleModeChoice { get; set; }
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(AudioLanguageChoices))]
+    public partial SettingOption<string>? AudioLanguage { get; set; }
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(SubtitleLanguageChoices))]
+    public partial SettingOption<string>? SubtitleLanguage { get; set; }
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(SubtitleModeChoices))]
+    public partial SettingOption<SubtitleMode>? SubtitleModeChoice { get; set; }
+
+    public IReadOnlyList<TrackChoice> AudioLanguageChoices => Choices(AudioLanguages, AudioLanguage, l => AudioLanguage = l);
+    public IReadOnlyList<TrackChoice> SubtitleLanguageChoices => Choices(SubtitleLanguages, SubtitleLanguage, l => SubtitleLanguage = l);
+    public IReadOnlyList<TrackChoice> SubtitleModeChoices => Choices(SubtitleModes, SubtitleModeChoice, m => SubtitleModeChoice = m);
 
     /// <summary>The language settings can be changed once the user's server settings are in.</summary>
     [ObservableProperty]
@@ -221,4 +278,27 @@ public sealed partial class SettingsViewModel : ViewModelBase
         try { ServerVersion = (await info).Version; }
         catch (Exception error) when (error is JellyfinException or System.Net.Http.HttpRequestException or TimeoutException) { }
     }
+}
+
+/// <summary>One page of Settings, over the list: what it shows is the list's (<see cref="SettingsViewModel"/>).</summary>
+public sealed class SettingsPageViewModel(SettingsViewModel settings, SettingsPage page) : ViewModelBase
+{
+    public SettingsViewModel Settings { get; } = settings;
+
+    public string Title => page switch
+    {
+        SettingsPage.Playback => "Playback",
+        SettingsPage.AudioSubtitles => "Audio & Subtitles",
+        SettingsPage.DiscMenus => "Disc Menus",
+        SettingsPage.TitlePages => "Title Pages",
+        SettingsPage.Account => "Account",
+        _ => "About",
+    };
+
+    public bool IsPlayback => page == SettingsPage.Playback;
+    public bool IsAudioSubtitles => page == SettingsPage.AudioSubtitles;
+    public bool IsDiscMenus => page == SettingsPage.DiscMenus;
+    public bool IsTitlePages => page == SettingsPage.TitlePages;
+    public bool IsAccount => page == SettingsPage.Account;
+    public bool IsAbout => page == SettingsPage.About;
 }

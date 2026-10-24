@@ -5,213 +5,58 @@
              x:DataType="vm:SettingsViewModel">
 
     <UserControl.Styles>
-        <!-- A section's heading, its rows in a rounded group, and the grey notes under them. -->
-        <Style Selector="TextBlock.heading">
-            <Setter Property="FontSize" Value="20" />
-            <Setter Property="FontWeight" Value="SemiBold" />
-            <Setter Property="Margin" Value="4,28,0,10" />
-        </Style>
-        <Style Selector="Border.group">
-            <Setter Property="Background" Value="#14FFFFFF" />
-            <Setter Property="CornerRadius" Value="12" />
-            <Setter Property="Padding" Value="18,6" />
-        </Style>
-        <Style Selector="DockPanel.row">
-            <Setter Property="MinHeight" Value="52" />
-        </Style>
-        <Style Selector="DockPanel.row > TextBlock">
-            <Setter Property="VerticalAlignment" Value="Center" />
-        </Style>
-        <Style Selector="DockPanel.row > ComboBox">
-            <Setter Property="DockPanel.Dock" Value="Right" />
-            <Setter Property="MinWidth" Value="200" />
-            <Setter Property="VerticalAlignment" Value="Center" />
-        </Style>
-        <Style Selector="DockPanel.row > ToggleSwitch">
-            <Setter Property="DockPanel.Dock" Value="Right" />
-            <Setter Property="OnContent" Value="" />
-            <Setter Property="OffContent" Value="" />
-            <Setter Property="VerticalAlignment" Value="Center" />
-            <Setter Property="Margin" Value="0,0,-12,0" />
-        </Style>
-        <Style Selector="DockPanel.row > TextBlock.value">
-            <Setter Property="DockPanel.Dock" Value="Right" />
-            <Setter Property="Foreground" Value="{StaticResource Secondary}" />
-            <Setter Property="Margin" Value="16,0,0,0" />
-        </Style>
-        <Style Selector="Rectangle.divider">
-            <Setter Property="Height" Value="1" />
-            <Setter Property="Fill" Value="#1AFFFFFF" />
-        </Style>
-        <Style Selector="TextBlock.note">
-            <Setter Property="FontSize" Value="12" />
-            <Setter Property="Foreground" Value="{StaticResource Secondary}" />
-            <Setter Property="TextWrapping" Value="Wrap" />
-            <Setter Property="Margin" Value="4,8,4,0" />
-        </Style>
+        <StyleInclude Source="avares://Aster.Desktop/Views/SettingsStyles.axaml" />
     </UserControl.Styles>
 
+    <!-- Settings' pages, as the Apple TV lists them: each opens over the list. -->
     <ScrollViewer HorizontalScrollBarVisibility="Disabled">
-        <StackPanel Margin="48,76,48,60" MaxWidth="760" HorizontalAlignment="Left">
-            <TextBlock Text="Settings" FontSize="32" FontWeight="Bold" Margin="0,0,0,4" />
+        <StackPanel Margin="48,76,48,60">
+            <TextBlock Classes="pageTitle" Text="Settings" />
 
-            <TextBlock Classes="heading" Text="Playback" />
-            <Border Classes="group">
-                <StackPanel>
-                    <DockPanel Classes="row">
-                        <ComboBox ItemsSource="{Binding Bitrates}" SelectedItem="{Binding Bitrate}" AutomationProperties.Name="Maximum streaming quality" />
-                        <TextBlock Text="Maximum streaming quality" />
-                    </DockPanel>
-                    <Rectangle Classes="divider" />
-                    <DockPanel Classes="row">
-                        <ToggleSwitch IsChecked="{Binding FullScreenPlayback}" AutomationProperties.Name="Play videos full screen" />
-                        <TextBlock Text="Play videos full screen" />
-                    </DockPanel>
-                </StackPanel>
-            </Border>
-            <TextBlock Classes="note" Text="Over the quality limit, the server converts a video down to it. A video takes the whole screen as it starts, and the window comes back as it closes. Off, it plays inside the window." />
-
-            <TextBlock Classes="heading" Text="Episodes" />
-            <Border Classes="group">
-                <StackPanel>
-                    <DockPanel Classes="row">
-                        <ToggleSwitch IsChecked="{Binding AutoplayNext}" AutomationProperties.Name="Autoplay next episode" />
-                        <TextBlock Text="Autoplay next episode" />
-                    </DockPanel>
-                    <Rectangle Classes="divider" />
-                    <DockPanel Classes="row">
-                        <ToggleSwitch IsChecked="{Binding AutoSkipIntro}" AutomationProperties.Name="Skip intros automatically" />
-                        <TextBlock Text="Skip intros automatically" />
-                    </DockPanel>
-                </StackPanel>
-            </Border>
-            <TextBlock Classes="note" Text="Skip Intro and Skip Credits need markers on the server, from the Intro Skipper plugin or chapter markers." />
-
-            <TextBlock Classes="heading" Text="Title Pages" />
-            <Border Classes="group">
-                <StackPanel>
-                    <DockPanel Classes="row">
-                        <ToggleSwitch IsChecked="{Binding ThemeMusic}" AutomationProperties.Name="Theme music" />
-                        <TextBlock Text="Theme music" />
-                    </DockPanel>
-                    <Rectangle Classes="divider" />
-                    <DockPanel Classes="row">
-                        <ToggleSwitch IsChecked="{Binding ThemeVideos}" AutomationProperties.Name="Theme videos" />
-                        <TextBlock Text="Theme videos" />
-                    </DockPanel>
-                </StackPanel>
-            </Border>
-            <TextBlock Classes="note" Text="Plays a title's theme song quietly, or loops its theme video behind the page, when your library has them. Theme music stays off while you are listening to music." />
-
-            <TextBlock Classes="heading" Text="Disc Menus" />
-            <Border Classes="group">
-                <StackPanel>
-                    <DockPanel Classes="row">
-                        <ToggleSwitch IsChecked="{Binding PreferDiscMenu}" AutomationProperties.Name="Open disc menu when pressing Play" />
-                        <TextBlock Text="Open disc menu when pressing Play" />
-                    </DockPanel>
-                    <Rectangle Classes="divider" />
-                    <DockPanel Classes="row">
-                        <ToggleSwitch IsChecked="{Binding DiscMenuSounds}" AutomationProperties.Name="Menu music and sounds" />
-                        <TextBlock Text="Menu music and sounds" />
-                    </DockPanel>
-                </StackPanel>
-            </Border>
-            <TextBlock Classes="note" Text="Titles with a JellyDisc menu on the server show a Disc Menu button on their page. Turn on the first option to start those titles at their menu, like putting in the disc." />
-
-            <TextBlock Classes="heading" Text="Audio &amp; Subtitles" />
-            <Border Classes="group">
-                <StackPanel IsEnabled="{Binding HasConfiguration}">
-                    <DockPanel Classes="row">
-                        <ComboBox ItemsSource="{Binding AudioLanguages}" SelectedItem="{Binding AudioLanguage}" AutomationProperties.Name="Preferred audio language" />
-                        <TextBlock Text="Preferred audio language" />
-                    </DockPanel>
-                    <Rectangle Classes="divider" />
-                    <DockPanel Classes="row">
-                        <ComboBox ItemsSource="{Binding SubtitleLanguages}" SelectedItem="{Binding SubtitleLanguage}" AutomationProperties.Name="Preferred subtitle language" />
-                        <TextBlock Text="Preferred subtitle language" />
-                    </DockPanel>
-                    <Rectangle Classes="divider" />
-                    <DockPanel Classes="row">
-                        <ComboBox ItemsSource="{Binding SubtitleModes}" SelectedItem="{Binding SubtitleModeChoice}" AutomationProperties.Name="Subtitles" />
-                        <TextBlock Text="Subtitles" />
-                    </DockPanel>
-                </StackPanel>
-            </Border>
-            <TextBlock Classes="note" Text="{Binding LanguageNote}" />
-            <Border Classes="group" Margin="0,16,0,0">
-                <DockPanel Classes="row">
-                    <ToggleSwitch IsChecked="{Binding StyledSubtitles}" AutomationProperties.Name="Draw ASS and SSA subtitles as styled" />
-                    <TextBlock Text="Draw ASS and SSA subtitles as styled" />
+            <Button Classes="row" Command="{Binding OpenCommand}" CommandParameter="{x:Static vm:SettingsPage.Playback}">
+                <DockPanel>
+                    <TextBlock Classes="chevron" />
+                    <TextBlock Classes="icon" Text="&#xE768;" />
+                    <TextBlock Text="Playback" VerticalAlignment="Center" />
                 </DockPanel>
-            </Border>
-            <TextBlock Classes="note" Text="Draws anime subtitles as the release intended: signs where they belong on screen, their drawings, and the fonts inside the file. Turn off for plain text at the bottom." />
-
-            <TextBlock Classes="heading" Text="Anime" />
-            <Border Classes="group">
-                <DockPanel Classes="row">
-                    <ToggleSwitch IsChecked="{Binding ThemeCards}" AutomationProperties.Name="Song card at openings and endings" />
-                    <TextBlock Text="Song card at openings and endings" />
+            </Button>
+            <Button Classes="row" Command="{Binding OpenCommand}" CommandParameter="{x:Static vm:SettingsPage.AudioSubtitles}">
+                <DockPanel>
+                    <TextBlock Classes="chevron" />
+                    <TextBlock Classes="icon" Text="&#xE7F0;" />
+                    <TextBlock Text="Audio &amp; Subtitles" VerticalAlignment="Center" />
                 </DockPanel>
-            </Border>
-            <TextBlock Classes="note" Text="As an episode's opening or ending starts, and again as it finishes, the song and artist show in the corner, like a music channel. Found from the episode's OP and ED chapters, with the song named by the OP/ED plugin when the server has it. Music videos get the card too, as they start and end." />
-
-            <TextBlock Classes="heading" Text="Account" />
-            <Border Classes="group">
-                <StackPanel>
-                    <DockPanel Classes="row">
-                        <TextBlock Classes="value" Text="{Binding ServerName}" />
-                        <TextBlock Text="Server" />
-                    </DockPanel>
-                    <Rectangle Classes="divider" />
-                    <DockPanel Classes="row">
-                        <TextBlock Classes="value" Text="{Binding ServerAddress}" TextTrimming="CharacterEllipsis" />
-                        <TextBlock Text="Address" />
-                    </DockPanel>
-                    <Rectangle Classes="divider" IsVisible="{Binding ServerVersion, Converter={x:Static ObjectConverters.IsNotNull}}" />
-                    <DockPanel Classes="row" IsVisible="{Binding ServerVersion, Converter={x:Static ObjectConverters.IsNotNull}}">
-                        <TextBlock Classes="value" Text="{Binding ServerVersion}" />
-                        <TextBlock Text="Jellyfin version" />
-                    </DockPanel>
-                    <Rectangle Classes="divider" />
-                    <DockPanel Classes="row">
-                        <TextBlock Classes="value" Text="{Binding UserName}" />
-                        <TextBlock Text="User" />
-                    </DockPanel>
-                </StackPanel>
-            </Border>
-            <!-- Both sign out, after asking; Change Server starts sign-in without the address. -->
-            <StackPanel Orientation="Horizontal" Spacing="12" Margin="0,14,0,0">
-                <Button Theme="{StaticResource PillButton}" Content="Switch User">
-                    <Button.Flyout>
-                        <Flyout Placement="TopEdgeAlignedLeft">
-                            <StackPanel Spacing="12" MaxWidth="280">
-                                <TextBlock Text="{Binding UserName, StringFormat='Sign out {0} to sign in as someone else?'}" TextWrapping="Wrap" FontWeight="SemiBold" />
-                                <Button Content="Switch User" Command="{Binding SwitchUserCommand}" HorizontalAlignment="Right" />
-                            </StackPanel>
-                        </Flyout>
-                    </Button.Flyout>
-                </Button>
-                <Button Theme="{StaticResource PillButton}" Content="Change Server">
-                    <Button.Flyout>
-                        <Flyout Placement="TopEdgeAlignedLeft">
-                            <StackPanel Spacing="12" MaxWidth="280">
-                                <TextBlock Text="{Binding ServerName, StringFormat='Sign out of {0} to use another server?'}" TextWrapping="Wrap" FontWeight="SemiBold" />
-                                <Button Content="Change Server" Command="{Binding ChangeServerCommand}" HorizontalAlignment="Right" />
-                            </StackPanel>
-                        </Flyout>
-                    </Button.Flyout>
-                </Button>
-            </StackPanel>
-
-            <TextBlock Classes="heading" Text="About" />
-            <Border Classes="group">
-                <DockPanel Classes="row">
-                    <TextBlock Classes="value" Text="{Binding AppVersion}" />
-                    <TextBlock Text="Aster Media Player" />
+            </Button>
+            <Button Classes="row" Command="{Binding OpenCommand}" CommandParameter="{x:Static vm:SettingsPage.DiscMenus}">
+                <DockPanel>
+                    <TextBlock Classes="chevron" />
+                    <TextBlock Classes="icon" Text="&#xE8B2;" />
+                    <TextBlock Text="Disc Menus" VerticalAlignment="Center" />
                 </DockPanel>
-            </Border>
-            <TextBlock Classes="note" Text="A Jellyfin client for Windows, ported from the Apple TV, iPhone, iPad and Mac app." />
+            </Button>
+            <Button Classes="row" Command="{Binding OpenCommand}" CommandParameter="{x:Static vm:SettingsPage.TitlePages}">
+                <DockPanel>
+                    <TextBlock Classes="chevron" />
+                    <TextBlock Classes="icon" Text="&#xE7F4;" />
+                    <TextBlock Text="Title Pages" VerticalAlignment="Center" />
+                </DockPanel>
+            </Button>
+
+            <Button Classes="row" Command="{Binding OpenCommand}" CommandParameter="{x:Static vm:SettingsPage.Account}" Margin="0,16,0,8">
+                <DockPanel>
+                    <TextBlock Classes="chevron" />
+                    <TextBlock Classes="value" Text="{Binding UserName}" />
+                    <TextBlock Classes="icon" Text="&#xE77B;" />
+                    <TextBlock Text="Account" VerticalAlignment="Center" />
+                </DockPanel>
+            </Button>
+            <Button Classes="row" Command="{Binding OpenCommand}" CommandParameter="{x:Static vm:SettingsPage.About}">
+                <DockPanel>
+                    <TextBlock Classes="chevron" />
+                    <TextBlock Classes="icon" Text="&#xE8FD;" />
+                    <TextBlock Text="About" VerticalAlignment="Center" />
+                </DockPanel>
+            </Button>
         </StackPanel>
     </ScrollViewer>
 </UserControl>
