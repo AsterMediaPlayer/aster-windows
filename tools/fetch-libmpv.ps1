@@ -26,7 +26,12 @@ try {
     $ProgressPreference = 'SilentlyContinue'
     Invoke-WebRequest -Uri $url -OutFile $archive -UseBasicParsing
 
-    $actual = (Get-FileHash -Algorithm SHA256 $archive).Hash.ToLowerInvariant()
+    # .NET's SHA-256 rather than Get-FileHash: started from PowerShell 7 (as
+    # GitHub's runners and many terminals do), Windows PowerShell inherits a
+    # module path where Get-FileHash can't be found.
+    $stream = [IO.File]::OpenRead($archive)
+    try { $actual = [BitConverter]::ToString([Security.Cryptography.SHA256]::Create().ComputeHash($stream)).Replace('-', '').ToLowerInvariant() }
+    finally { $stream.Dispose() }
     if ($actual -ne $Sha256) { throw "libmpv download has the wrong hash ($actual); refusing to use it." }
 
     # Windows' own tar (libarchive) reads 7z.
