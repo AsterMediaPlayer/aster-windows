@@ -211,7 +211,7 @@ public sealed partial class ThemePlayer : ObservableObject, IDisposable
             {
                 // Frames go to the shell's MpvVideoView through the render API.
                 ["vo"] = "libmpv",
-                ["hwdec"] = "auto-safe",
+                ["hwdec"] = MpvHardware.Decoding,
                 ["aid"] = "no",
                 ["sid"] = "no",
                 ["sub-auto"] = "no",

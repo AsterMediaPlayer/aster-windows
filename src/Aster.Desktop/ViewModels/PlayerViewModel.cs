@@ -130,7 +130,7 @@ public partial class PlayerViewModel : ViewModelBase
     {
         // Frames go to MpvVideoView through the render API.
         ["vo"] = "libmpv",
-        ["hwdec"] = "auto-safe",
+        ["hwdec"] = MpvHardware.Decoding,
         // Stay on the last frame at the end, so the Up Next card shows over it.
         ["keep-open"] = "yes",
         ["idle"] = "yes",

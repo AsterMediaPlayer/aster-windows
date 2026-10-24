@@ -169,7 +169,7 @@ public partial class DiscMenuViewModel : ViewModelBase, IDisposable
             {
                 // Frames go to the menu's MpvVideoView through the render API.
                 ["vo"] = "libmpv",
-                ["hwdec"] = "auto-safe",
+                ["hwdec"] = MpvHardware.Decoding,
                 ["aid"] = muted ? "no" : "auto",
                 ["sid"] = "no",
                 ["sub-auto"] = "no",

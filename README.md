@@ -46,7 +46,10 @@ OpenGL from a graphics driver for video. What differs from Windows:
   Fluent Icons, which can't be shipped: Microsoft's Fluent UI System
   Icons (MIT), each at the Segoe code point the app already uses, made by
   `tools/make-icon-font.py`. A new icon needs a line there.
-- **Hardware decoding** is VA-API or NVDEC, which mpv picks itself.
+- **Hardware decoding** is VA-API, or with NVIDIA's driver whatever mpv
+  finds safe (NVDEC); only then does it try NVIDIA's libraries, so a machine
+  without them isn't told it can't load `libcuda`. Where neither works (a
+  virtual machine, say), video decodes in software.
 - **Game controllers** are read through the SDL3 library the build
   brings along. The desktop gives the person at it the controllers on its
   own; some (PlayStation and Switch ones, through hidraw) also need the
