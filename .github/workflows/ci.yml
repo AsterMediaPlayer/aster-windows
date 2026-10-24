@@ -1,0 +1,60 @@
+# Builds the app and runs the tests on Windows and Linux, for every push to
+# main and every pull request.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  windows:
+    name: Windows
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      # libmpv (about 120 MB) is fetched by the build; keep it between runs,
+      # keyed on the script that pins its version and hash.
+      - uses: actions/cache@v4
+        with:
+          path: native
+          key: libmpv-${{ hashFiles('tools/fetch-libmpv.ps1') }}
+      - name: Build
+        run: dotnet build Aster.slnx -c Release
+      # ffmpeg isn't on the runner, so the libmpv tests that need a clip skip themselves.
+      - name: Test
+        run: dotnet test Aster.slnx -c Release --no-build
+
+  linux:
+    name: Linux
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      # The system's libmpv, as on a user's machine, and ffmpeg so the libmpv
+      # tests run against a real clip.
+      - name: Install libmpv and ffmpeg
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libmpv2 ffmpeg
+      - name: Build
+        run: dotnet build Aster.slnx -c Release
+      - name: Test
+        run: dotnet test Aster.slnx -c Release --no-build
