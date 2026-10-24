@@ -167,8 +167,13 @@ has its show's). Going from a show to one of its episodes carries on with
 the same theme; any other page fades it out. It stays off while a song or
 book plays, and quiet while a title plays.
 
-Not yet: an anime opening looping behind a show with no theme video of its
-own, the Apple app's Now Playing
+An anime show with no theme video of its own loops an opening behind its
+page instead (with Theme videos on): the OP/ED plugin's for the season
+picked, else one found in that season's chapters, else the show's first,
+never one marked as a spoiler or NSFW. Title Pages' "Opening plays with
+sound" gives it its sound, as quiet as theme music.
+
+Not yet: the Apple app's Now Playing
 panel (Play All and Shuffle through the openings and endings, a theme
 playing beside the page while browsing), full versions, and Watch OP and
 Watch ED. Chinese titles sort under # in the letter index; the Apple app
@@ -307,9 +312,8 @@ About pages on one page, as the Mac's Settings window has them:
   with Switch User and Change Server (both sign out, after asking; Switch
   User keeps the server's address filled in).
 
-Not yet: the Channels page, Title Pages' anime opening
-with sound, and the Anime
-page's Now Playing panel and full versions, which wait on those features.
+Not yet: the Channels page, and the Anime page's Now Playing panel and
+full versions, which wait on those features.
 
 ## The player
 
