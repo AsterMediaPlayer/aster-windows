@@ -34,5 +34,22 @@
 
         <TextBlock Text="{Binding Message}" TextWrapping="Wrap" Foreground="#FF8A80"
                    IsVisible="{Binding Message, Converter={x:Static ObjectConverters.IsNotNull}}" />
+
+        <!-- Servers already signed in to: back to one without typing it. -->
+        <StackPanel Spacing="8" Margin="0,24,0,0" IsVisible="{Binding HasServers}">
+            <TextBlock Text="Your Servers" FontWeight="SemiBold" Opacity="0.7" HorizontalAlignment="Center" />
+            <ItemsControl ItemsSource="{Binding Servers}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:ServerChoice">
+                        <Button Command="{Binding Use}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Margin="0,0,0,6" Padding="14,8">
+                            <StackPanel>
+                                <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
+                                <TextBlock Text="{Binding Detail}" FontSize="12" Opacity="0.7" />
+                            </StackPanel>
+                        </Button>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </StackPanel>
     </StackPanel>
 </UserControl>

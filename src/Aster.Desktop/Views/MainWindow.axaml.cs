@@ -18,6 +18,9 @@ public partial class MainWindow : Window
         {
             if (e.GetCurrentPoint(this).Properties.IsXButton1Pressed && GoBack()) e.Handled = true;
         }, RoutingStrategies.Tunnel);
+        // Lock After: away is the window in the background or minimized.
+        Deactivated += (_, _) => (DataContext as MainViewModel)?.NoteLeft();
+        Activated += (_, _) => (DataContext as MainViewModel)?.CheckLock();
     }
 
     protected override void OnKeyDown(KeyEventArgs e)

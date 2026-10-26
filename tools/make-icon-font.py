@@ -32,6 +32,7 @@ ICONS = {
     0xE721: "search",
     0xE72B: "arrow_left",
     0xE72C: "arrow_clockwise",
+    0xE72E: "lock_closed",
     0xE734: "star",
     0xE740: "full_screen_maximize",
     0xE767: "speaker_2",

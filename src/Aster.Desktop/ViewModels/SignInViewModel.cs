@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
@@ -8,12 +10,23 @@ using CommunityToolkit.Mvvm.Input;
 
 namespace Aster.Desktop.ViewModels;
 
+/// <summary>A saved server on the sign-in screen: its name, Jellyfin or Emby and who's signed in, and going back to it.</summary>
+public sealed record ServerChoice(string Name, string Detail, IRelayCommand Use);
+
 public partial class SignInViewModel : ViewModelBase
 {
     private readonly Action<JellyfinClient, StoredSession> signedIn;
     private CancellationTokenSource? quickConnect;
 
-    public SignInViewModel(Action<JellyfinClient, StoredSession> signedIn) => this.signedIn = signedIn;
+    /// <param name="servers">The servers already signed in to, to go back to one without typing it.</param>
+    public SignInViewModel(Action<JellyfinClient, StoredSession> signedIn, IReadOnlyList<SavedServer> servers, Action<SavedServer> switchTo)
+    {
+        this.signedIn = signedIn;
+        Servers = servers.Select(s => new ServerChoice(s.Name, $"{s.Session.Kind} · {s.Session.UserName}", new RelayCommand(() => switchTo(s)))).ToList();
+    }
+
+    public IReadOnlyList<ServerChoice> Servers { get; }
+    public bool HasServers => Servers.Count > 0;
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(SignInCommand))]

@@ -1,0 +1,89 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Aster.Desktop.ViewModels"
+             xmlns:c="using:Aster.Desktop.Controls"
+             x:Class="Aster.Desktop.Views.SavedServerView"
+             x:DataType="vm:SavedServerViewModel">
+
+    <UserControl.Styles>
+        <StyleInclude Source="avares://Aster.Desktop/Views/SettingsStyles.axaml" />
+    </UserControl.Styles>
+
+    <!-- A saved server's page, over Account: who and where, switching to it, its password and Lock After, and forgetting it. -->
+    <Panel>
+        <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+            <StackPanel Margin="48,76,48,60">
+                <TextBlock Classes="pageTitle" Text="{Binding Name}" />
+
+                <Border Classes="fact">
+                    <DockPanel>
+                        <TextBlock Classes="value" Text="{Binding Kind}" />
+                        <TextBlock Text="Server" />
+                    </DockPanel>
+                </Border>
+                <Border Classes="fact">
+                    <DockPanel>
+                        <TextBlock Classes="value" Text="{Binding Address}" />
+                        <TextBlock Text="Address" />
+                    </DockPanel>
+                </Border>
+                <Border Classes="fact">
+                    <DockPanel>
+                        <TextBlock Classes="value" Text="{Binding UserName}" />
+                        <TextBlock Text="User" />
+                    </DockPanel>
+                </Border>
+
+                <TextBlock Classes="section" Text="SWITCHING" />
+                <Border Classes="fact" IsVisible="{Binding IsInUse}">
+                    <TextBlock Text="This is the server in use." />
+                </Border>
+                <Button Classes="row" Command="{Binding SwitchCommand}" IsVisible="{Binding IsOther}">
+                    <TextBlock Text="Switch to This Server" VerticalAlignment="Center" />
+                </Button>
+                <Button Classes="row" Command="{Binding FlipAsksPasswordCommand}">
+                    <DockPanel>
+                        <TextBlock Classes="value" Text="{Binding AsksPasswordToSwitch, Converter={x:Static c:Converters.OnOff}}" />
+                        <TextBlock Text="Ask for password to switch" VerticalAlignment="Center" />
+                    </DockPanel>
+                </Button>
+                <Border Classes="note">
+                    <TextBlock Text="{Binding AsksNote}" />
+                </Border>
+
+                <TextBlock Classes="section" Text="LOCK" />
+                <Button Classes="row" AutomationProperties.Name="Lock After">
+                    <DockPanel>
+                        <TextBlock Classes="chevron" />
+                        <TextBlock Classes="value" Text="{Binding LockAfterTitle}" />
+                        <TextBlock Text="Lock After" VerticalAlignment="Center" />
+                    </DockPanel>
+                    <Button.Flyout>
+                        <MenuFlyout Placement="BottomEdgeAlignedRight" ItemsSource="{Binding LockAfterChoices}" ItemContainerTheme="{StaticResource SettingChoice}" />
+                    </Button.Flyout>
+                </Button>
+                <Border Classes="note">
+                    <TextBlock Text="{Binding LockNote}" />
+                </Border>
+
+                <!-- Not the one in use: Sign Out of it is on Account. -->
+                <Button Classes="row" Margin="0,24,0,0" IsVisible="{Binding IsOther}">
+                    <TextBlock Text="Remove Server" VerticalAlignment="Center" Foreground="#FF8A80" />
+                    <Button.Flyout>
+                        <Flyout Placement="BottomEdgeAlignedLeft">
+                            <StackPanel Spacing="12" MaxWidth="300">
+                                <TextBlock Text="{Binding UserName, StringFormat='Sign {0} out of this server and forget it?'}" TextWrapping="Wrap" FontWeight="SemiBold" />
+                                <Button Content="Remove Server" Command="{Binding RemoveCommand}" HorizontalAlignment="Right" />
+                            </StackPanel>
+                        </Flyout>
+                    </Button.Flyout>
+                </Button>
+            </StackPanel>
+        </ScrollViewer>
+        <!-- Back, for the pointer: the page sits over Account. -->
+        <Button x:Name="BackButton" ToolTip.Tip="Back (Alt+←)" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="20"
+                Width="44" Height="44" CornerRadius="22" Background="#B3000000" Foreground="White" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Padding="0">
+            <TextBlock Text="&#xE72B;" FontFamily="{StaticResource IconFont}" />
+        </Button>
+    </Panel>
+</UserControl>

@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using Aster.Core.Jellyfin;
 using Aster.Core.Playback;
@@ -8,18 +10,33 @@ using CommunityToolkit.Mvvm.ComponentModel;
 namespace Aster.Desktop.ViewModels;
 
 /// <summary>What the window shows: sign-in, the app (sidebar and pages), or the player over it all.</summary>
-public partial class MainViewModel : ViewModelBase
+public partial class MainViewModel : ViewModelBase, IServerAccounts
 {
     [ObservableProperty]
     public partial ViewModelBase? CurrentPage { get; set; }
 
     private ShellViewModel? shell;
 
+    /// <summary>Every server signed in to, to switch between (the development session isn't one).</summary>
+    public IReadOnlyList<SavedServer> Servers { get; private set; } = [];
+
+    public string? CurrentId { get; private set; }
+
     /// <summary>The disc menu open, if one is, even while a title it played is showing.</summary>
     private DiscMenuViewModel? openMenu;
 
     /// <summary>Signed in from the ASTER_* variables: signing out leaves the saved session alone.</summary>
     private bool developmentSession;
+
+    /// <summary>
+    /// The server locked after Lock After, until its password is given (or
+    /// it's signed in to afresh): switching back to it asks for it too.
+    /// </summary>
+    private static string? LockedId
+    {
+        get => AwayClock.LockedServer;
+        set => AwayClock.LockedServer = value;
+    }
 
     /// <param name="playItemId">A title to play straight away (<c>--play &lt;id&gt;</c>), for development.</param>
     /// <param name="maxBitrate">A quality cap for that title (<c>--max-bitrate</c>), to try converted streams.</param>
@@ -33,7 +50,9 @@ public partial class MainViewModel : ViewModelBase
     {
         var development = DevelopmentSession();
         developmentSession = development is not null;
-        if ((development ?? StoredSession.Load()) is { } session)
+        var stored = StoredSession.Load();
+        Servers = SavedServers.LoadOrStart(stored);
+        if ((development ?? stored) is { } session)
         {
             var client = new JellyfinClient(session.ServerUrl, session.AccessToken, session.UserId, kind: session.Kind);
             ShowShell(client, session);
@@ -42,6 +61,8 @@ public partial class MainViewModel : ViewModelBase
             if (section is not null && shell!.CurrentPage is LiveTVViewModel live) live.ShowSection(section);
             if (openItemId is not null) _ = OpenByIdAsync(client, openItemId);
             if (playItemId is not null) _ = PlayByIdAsync(client, playItemId, maxBitrate, startSeconds);
+            // Closed while away, or while locked: it's still locked.
+            CheckLock();
         }
         else
         {
@@ -75,15 +96,119 @@ public partial class MainViewModel : ViewModelBase
         shell?.Dispose();
         shell = null;
         ImageLoader.Client = null;
-        CurrentPage = new SignInViewModel(ShowShell) { Message = message, ServerAddress = serverAddress ?? "" };
+        CurrentId = null;
+        CurrentPage = new SignInViewModel(SignedIn, Servers, SwitchTo) { Message = message, ServerAddress = serverAddress ?? "" };
+    }
+
+    /// <summary>A sign-in that worked: kept with the others, and used.</summary>
+    private void SignedIn(JellyfinClient client, StoredSession session)
+    {
+        // Signing in afresh is as good as the password.
+        if (LockedId == SavedServer.IdOf(session.ServerUrl, session.UserId)) Unlocked();
+        Servers = SavedServers.Remember(Servers, session);
+        SavedServers.Save(Servers);
+        ShowShell(client, session);
     }
 
     private void ShowShell(JellyfinClient client, StoredSession session)
     {
+        // Another server's: what the last one was showing and playing goes.
+        shell?.Dispose();
         ImageLoader.Client = client;
+        CurrentId = developmentSession ? null : SavedServer.IdOf(session.ServerUrl, session.UserId);
         shell = new ShellViewModel(client, session, (entry, closed) => Play(client, entry, closed),
-            (document, itemId, closed) => ShowDiscMenu(client, document, itemId, closed), kind => SignOutAsync(client, kind));
+            (document, itemId, closed) => ShowDiscMenu(client, document, itemId, closed), kind => SignOutAsync(client, kind), this);
         CurrentPage = shell;
+    }
+
+    /// <summary>Uses a saved server, asking for its password first when it's set to, or locked.</summary>
+    public void SwitchTo(SavedServer server)
+    {
+        if (server.Id == CurrentId) return;
+        if (!server.AsksPasswordToSwitch && server.Id != LockedId)
+        {
+            Use(server.Session);
+            return;
+        }
+        var back = CurrentPage;
+        CurrentPage = new ServerPasswordViewModel(server, locking: false, fresh =>
+        {
+            if (server.Id == LockedId) Unlocked();
+            Use(fresh);
+        }, () => CurrentPage = back);
+    }
+
+    public void Change(string id, Func<SavedServer, SavedServer> change)
+    {
+        Servers = SavedServers.Change(Servers, id, change);
+        SavedServers.Save(Servers);
+    }
+
+    /// <summary>A saved sign-in, or a fresh one from its password: the app starts afresh on it.</summary>
+    private void Use(StoredSession session)
+    {
+        session.Save();
+        developmentSession = false;
+        Servers = SavedServers.Remember(Servers, session);
+        SavedServers.Save(Servers);
+        ShowShell(new JellyfinClient(session.ServerUrl, session.AccessToken, session.UserId, kind: session.Kind), session);
+    }
+
+    public void Remove(string id)
+    {
+        if (id == CurrentId || Servers.FirstOrDefault(s => s.Id == id) is not { } server) return;
+        Servers = SavedServers.Forget(Servers, id);
+        SavedServers.Save(Servers);
+        var session = server.Session;
+        _ = new JellyfinClient(session.ServerUrl, session.AccessToken, session.UserId, kind: session.Kind).LogoutAsync()
+            .ContinueWith(_ => { }, TaskScheduler.Default);
+    }
+
+    // ---- Lock After ----
+
+    private SavedServer? CurrentServer => Servers.FirstOrDefault(s => s.Id == CurrentId);
+
+    /// <summary>
+    /// The window went to the background (or is closing): the clock for the
+    /// server's Lock After starts. Not while a video or disc menu is up, as
+    /// one plays on while another window has the keyboard; closing always.
+    /// </summary>
+    public void NoteLeft(bool closing = false)
+    {
+        if ((closing ? shell is not null : CurrentPage is ShellViewModel) && CurrentServer?.LockAfterMinutes is not null) AwayClock.NoteLeft();
+    }
+
+    /// <summary>The window is back (or Aster just opened): locks the server in use if it was away past its Lock After.</summary>
+    public void CheckLock()
+    {
+        if (shell is null || CurrentServer is not { } server) return;
+        if (server.Id == LockedId || server.LocksAfter(AwayClock.LeftAt, DateTimeOffset.UtcNow))
+        {
+            Lock(server);
+            return;
+        }
+        AwayClock.Clear();
+    }
+
+    /// <summary>Asks for the password to carry on: what was showing and playing goes.</summary>
+    private void Lock(SavedServer server)
+    {
+        LockedId = server.Id;
+        AwayClock.Clear();
+        shell?.Dispose();
+        shell = null;
+        ImageLoader.Client = null;
+        CurrentPage = new ServerPasswordViewModel(server, locking: true, fresh =>
+        {
+            Unlocked();
+            Use(fresh);
+        }, () => ShowSignIn());
+    }
+
+    private void Unlocked()
+    {
+        LockedId = null;
+        AwayClock.Clear();
     }
 
     /// <summary>Plays over everything; closing comes back to the page it was played from.</summary>
@@ -154,10 +279,14 @@ public partial class MainViewModel : ViewModelBase
         catch (Exception error) when (error is JellyfinException or System.Net.Http.HttpRequestException) { }
     }
 
+    /// <summary>
+    /// Off to sign-in. Adding a server keeps the one in use saved and signed
+    /// in, to switch back to; signing out (or a session the server ended)
+    /// forgets it, and the others stay saved.
+    /// </summary>
     private async Task SignOutAsync(JellyfinClient client, SignOutKind kind)
     {
-        var expired = kind == SignOutKind.Expired;
-        var address = kind == SignOutKind.ChangeServer ? null : client.BaseUrl.ToString().TrimEnd('/');
+        var address = kind == SignOutKind.AddServer ? null : client.BaseUrl.ToString().TrimEnd('/');
         if (developmentSession)
         {
             // Neither ends the key's access nor forgets the real sign-in.
@@ -165,14 +294,24 @@ public partial class MainViewModel : ViewModelBase
             ShowSignIn("Signed out of the development session.", address);
             return;
         }
-        if (!expired) await client.LogoutAsync();
+        if (kind != SignOutKind.AddServer && CurrentId is { } current)
+        {
+            Servers = SavedServers.Forget(Servers, current);
+            SavedServers.Save(Servers);
+        }
+        if (kind == SignOutKind.SignOut)
+        {
+            try { await client.LogoutAsync(); }
+            catch (Exception error) when (error is JellyfinException or System.Net.Http.HttpRequestException or TimeoutException) { }
+        }
         StoredSession.Clear();
-        ShowSignIn(expired ? "Your session has ended. Please sign in again." : null, address);
+        ShowSignIn(kind == SignOutKind.Expired ? "Your session has ended. Please sign in again." : null, address);
     }
 
     /// <summary>The app is closing: a title playing reports where it stopped.</summary>
     public void Shutdown()
     {
+        NoteLeft(closing: true);
         if (CurrentPage is PlayerViewModel player)
         {
             player.SaveProgressNow();

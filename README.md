@@ -308,9 +308,13 @@ About pages on one page, as the Mac's Settings window has them:
   another device's choice.
 - **The user's Jellyfin settings**, shared with the web app: the preferred
   audio and subtitle languages and when subtitles show.
-- **Account:** the server, its address and Jellyfin version, and the user,
-  with Switch User and Change Server (both sign out, after asking; Switch
-  User keeps the server's address filled in).
+- **Account:** the server, its address and Jellyfin or Emby version, and
+  every server signed in to, which stay signed in to switch between (also
+  from the sign-in screen). Add Server signs in to another, or as someone
+  else; Sign Out forgets the one in use. Each server's page switches to it,
+  can ask for the user's password first, locks it after time away (5
+  minutes to 4 hours, the window in the background, minimized or closed,
+  but not while a video plays), checked by the server, and forgets it.
 
 Not yet: the Channels page, and the Anime page's Now Playing panel and
 full versions, which wait on those features.

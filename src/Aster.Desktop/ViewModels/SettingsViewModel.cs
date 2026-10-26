@@ -16,6 +16,13 @@ public sealed record SettingOption<T>(string Title, T Value)
     public override string ToString() => Title;
 }
 
+/// <summary>A saved server in Settings: its name, Jellyfin or Emby and who's signed in, and its page.</summary>
+public sealed record ServerRow(string Name, string Detail, bool IsCurrent, bool AsksPassword, IRelayCommand Open)
+{
+    /// <summary>Another server that asks for its password to switch: a lock beside it.</summary>
+    public bool ShowsLock => AsksPassword && !IsCurrent;
+}
+
 /// <summary>A page of Settings, opened from its list.</summary>
 public enum SettingsPage
 {
@@ -44,8 +51,10 @@ public sealed partial class SettingsViewModel : ViewModelBase
     /// <summary>True while values are being shown, rather than chosen.</summary>
     private bool showing;
 
-    public SettingsViewModel(INavigator navigator, string userName, string serverName, Func<SignOutKind, Task> signOut)
+    public SettingsViewModel(INavigator navigator, string userName, string serverName, Func<SignOutKind, Task> signOut, IServerAccounts accounts)
     {
+        this.accounts = accounts;
+        ShowServers();
         this.navigator = navigator;
         this.signOut = signOut;
         UserName = userName;
@@ -247,8 +256,26 @@ public sealed partial class SettingsViewModel : ViewModelBase
     public string ServerAddress { get; }
     [ObservableProperty] public partial string? ServerVersion { get; set; }
 
-    [RelayCommand] private Task SwitchUser() => signOut(SignOutKind.SwitchUser);
-    [RelayCommand] private Task ChangeServer() => signOut(SignOutKind.ChangeServer);
+    // ---- Servers ----
+
+    private readonly IServerAccounts accounts;
+
+    /// <summary>Every server signed in to, each opening its page: to switch to, lock or forget.</summary>
+    [ObservableProperty] public partial IReadOnlyList<ServerRow> Servers { get; private set; } = [];
+
+    private void ShowServers() =>
+        Servers = accounts.Servers.Select(server => new ServerRow(
+            server.Name,
+            $"{server.Session.Kind} · {server.Session.UserName}",
+            server.Id == accounts.CurrentId,
+            server.AsksPasswordToSwitch,
+            new RelayCommand(() => navigator.Push(new SavedServerViewModel(navigator, accounts, server, ShowServers))))).ToList();
+
+    /// <summary>Another server, or another user on this one: the one in use stays signed in, to switch back to.</summary>
+    [RelayCommand] private Task AddServer() => signOut(SignOutKind.AddServer);
+
+    /// <summary>Signs out of the server in use, which is forgotten; the others stay.</summary>
+    [RelayCommand] private Task SignOut() => signOut(SignOutKind.SignOut);
 
     // ---- About ----
 

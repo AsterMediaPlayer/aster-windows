@@ -89,17 +89,35 @@ public enum AppTab
     Settings,
 }
 
-/// <summary>Why the user is signing out, which decides what sign-in starts with.</summary>
+/// <summary>Why the app is leaving the server in use for sign-in, which decides what sign-in starts with.</summary>
 public enum SignOutKind
 {
-    /// <summary>Sign in again, or as someone else: the server's address stays filled in.</summary>
-    SwitchUser,
+    /// <summary>Sign in to another server (or as someone else): the one in use stays saved and signed in, to switch back to.</summary>
+    AddServer,
 
-    /// <summary>Another server: sign-in starts empty.</summary>
-    ChangeServer,
+    /// <summary>Sign out of the server in use, which is forgotten; the others stay saved.</summary>
+    SignOut,
 
-    /// <summary>The server ended the session itself (401).</summary>
+    /// <summary>The server ended the session itself (401): it's forgotten, its address kept for signing in again.</summary>
     Expired,
+}
+
+/// <summary>The servers signed in to, for Settings and sign-in to switch between, add to and forget.</summary>
+public interface IServerAccounts
+{
+    IReadOnlyList<SavedServer> Servers { get; }
+
+    /// <summary>The saved server in use; null on sign-in, or for a development session.</summary>
+    string? CurrentId { get; }
+
+    /// <summary>Uses a saved server, with its saved sign-in (asking for its password first, when it's set to): the app starts afresh on it.</summary>
+    void SwitchTo(SavedServer server);
+
+    /// <summary>Changes a saved server's settings: its password to switch, its Lock After.</summary>
+    void Change(string id, Func<SavedServer, SavedServer> change);
+
+    /// <summary>Forgets a saved server (not the one in use), signing it out.</summary>
+    void Remove(string id);
 }
 
 /// <summary>
@@ -112,6 +130,7 @@ public partial class ShellViewModel : ViewModelBase, INavigator, IDisposable
     private readonly Action<PlaybackQueueItem, Action<BaseItem?>?> play;
     private readonly Action<Aster.Core.DiscMenu.DiscMenuDocument, string, Action> showDiscMenu;
     private readonly Func<SignOutKind, Task> signOut;
+    private readonly IServerAccounts accounts;
     private readonly List<ViewModelBase> stack = [];
     private readonly Dictionary<AppTab, ViewModelBase> tabs = [];
     private AppTab tab = AppTab.Home;
@@ -121,8 +140,9 @@ public partial class ShellViewModel : ViewModelBase, INavigator, IDisposable
     /// <param name="signOut">Signs out, saying why.</param>
     /// <param name="showDiscMenu">Shows a disc menu over the window, calling back as it closes.</param>
     public ShellViewModel(JellyfinClient client, StoredSession session, Action<PlaybackQueueItem, Action<BaseItem?>?> play,
-        Action<Aster.Core.DiscMenu.DiscMenuDocument, string, Action> showDiscMenu, Func<SignOutKind, Task> signOut)
+        Action<Aster.Core.DiscMenu.DiscMenuDocument, string, Action> showDiscMenu, Func<SignOutKind, Task> signOut, IServerAccounts accounts)
     {
+        this.accounts = accounts;
         Client = client;
         this.play = play;
         this.showDiscMenu = showDiscMenu;
@@ -258,7 +278,7 @@ public partial class ShellViewModel : ViewModelBase, INavigator, IDisposable
                 AppTab.Channels => new ChannelsViewModel(this),
                 AppTab.Library => new LibraryViewModel(this),
                 AppTab.Search => new SearchViewModel(this),
-                AppTab.Settings => new SettingsViewModel(this, UserName, ServerName, signOut),
+                AppTab.Settings => new SettingsViewModel(this, UserName, ServerName, signOut, accounts),
                 _ => Home,
             };
             tabs[chosen] = page;

@@ -168,7 +168,7 @@
                     </Border>
                 </StackPanel>
 
-                <!-- Account: who and where, then Switch User and Change Server, which ask first. -->
+                <!-- Account: the server in use, then every server signed in to, to switch between. -->
                 <StackPanel IsVisible="{Binding $parent[UserControl].((vm:SettingsPageViewModel)DataContext).IsAccount}">
                     <TextBlock Classes="section" Text="SERVER" />
                     <Border Classes="fact">
@@ -190,31 +190,39 @@
                         </DockPanel>
                     </Border>
 
-                    <TextBlock Classes="section" Text="USER" />
-                    <Border Classes="fact">
-                        <DockPanel>
-                            <TextBlock Classes="value" Text="{Binding UserName}" />
-                            <TextBlock Text="Signed in as" />
-                        </DockPanel>
-                    </Border>
-                    <Button Classes="row">
-                        <TextBlock Text="Switch User" VerticalAlignment="Center" />
-                        <Button.Flyout>
-                            <Flyout Placement="BottomEdgeAlignedLeft">
-                                <StackPanel Spacing="12" MaxWidth="300">
-                                    <TextBlock Text="{Binding UserName, StringFormat='Sign out {0} to sign in as someone else?'}" TextWrapping="Wrap" FontWeight="SemiBold" />
-                                    <Button Content="Switch User" Command="{Binding SwitchUserCommand}" HorizontalAlignment="Right" />
-                                </StackPanel>
-                            </Flyout>
-                        </Button.Flyout>
+                    <TextBlock Classes="section" Text="SERVERS" />
+                    <ItemsControl ItemsSource="{Binding Servers}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:ServerRow">
+                                <!-- Its page: switch to it, lock it, or forget it. -->
+                                <Button Classes="row" Command="{Binding Open}" AutomationProperties.Name="{Binding Name}">
+                                    <DockPanel>
+                                        <TextBlock Classes="chevron" />
+                                        <TextBlock Classes="value" Text="In Use" Foreground="{DynamicResource SystemAccentColor}" FontWeight="SemiBold" IsVisible="{Binding IsCurrent}" />
+                                        <TextBlock Classes="value" Text="&#xE72E;" FontFamily="{StaticResource IconFont}" IsVisible="{Binding ShowsLock}"
+                                                   ToolTip.Tip="Asks for password" />
+                                        <StackPanel VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding Name}" />
+                                            <TextBlock Text="{Binding Detail}" FontSize="14" Opacity="0.6" />
+                                        </StackPanel>
+                                    </DockPanel>
+                                </Button>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <Button Classes="row" Command="{Binding AddServerCommand}">
+                        <TextBlock Text="Add Server" VerticalAlignment="Center" />
                     </Button>
-                    <Button Classes="row">
-                        <TextBlock Text="Change Server" VerticalAlignment="Center" />
+                    <Border Classes="note">
+                        <TextBlock Text="Servers you've signed in to stay signed in, to switch between. Add one to sign in to another Jellyfin or Emby server, or as someone else." />
+                    </Border>
+                    <Button Classes="row" Margin="0,8,0,8">
+                        <TextBlock Text="{Binding ServerName, StringFormat='Sign Out of {0}'}" VerticalAlignment="Center" />
                         <Button.Flyout>
                             <Flyout Placement="BottomEdgeAlignedLeft">
                                 <StackPanel Spacing="12" MaxWidth="300">
-                                    <TextBlock Text="{Binding ServerName, StringFormat='Sign out of {0} to use another server?'}" TextWrapping="Wrap" FontWeight="SemiBold" />
-                                    <Button Content="Change Server" Command="{Binding ChangeServerCommand}" HorizontalAlignment="Right" />
+                                    <TextBlock Text="{Binding UserName, StringFormat='Sign {0} out of this server? It leaves your servers; the others stay.'}" TextWrapping="Wrap" FontWeight="SemiBold" />
+                                    <Button Content="Sign Out" Command="{Binding SignOutCommand}" HorizontalAlignment="Right" />
                                 </StackPanel>
                             </Flyout>
                         </Button.Flyout>
