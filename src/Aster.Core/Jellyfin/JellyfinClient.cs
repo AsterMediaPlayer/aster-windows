@@ -119,12 +119,18 @@ public sealed class JellyfinClient
     /// <summary>Whether <paramref name="url"/> is the server's own (same scheme, host, port and base path).</summary>
     public bool IsOnServer(Uri url) => url.GetLeftPart(UriPartial.Path).StartsWith(Root + "/", StringComparison.OrdinalIgnoreCase);
 
+    /// <summary>
+    /// A request carrying the sign-in, for the server only: any other address
+    /// (a disc menu's artwork or sound from a CDN or YouTube, say) gets a
+    /// plain request, so the token never leaves for another site.
+    /// </summary>
     public HttpRequestMessage AuthorizedRequest(Uri url, HttpMethod? method = null)
     {
         var request = new HttpRequestMessage(method ?? HttpMethod.Get, url);
+        request.Headers.Accept.ParseAdd("application/json");
+        if (!IsOnServer(url)) return request;
         request.Headers.TryAddWithoutValidation("Authorization", AuthorizationHeader);
         request.Headers.TryAddWithoutValidation("X-Emby-Authorization", AuthorizationHeader);
-        request.Headers.Accept.ParseAdd("application/json");
         return request;
     }
 
@@ -208,10 +214,8 @@ public sealed class JellyfinClient
     {
         if (fresh) ImageCache.Remove(url);
         else if (await ImageCache.ReadAsync(url, ct).ConfigureAwait(false) is { } cached) return cached;
-        // Only the server hears who's asking: a disc menu can name pictures
-        // anywhere on the web, which mustn't be handed the user's token.
-        var request = IsOnServer(url) ? AuthorizedRequest(url) : new HttpRequestMessage(HttpMethod.Get, url);
-        var data = await SendRequiredAsync(request, ct).ConfigureAwait(false);
+        // A disc menu can name pictures anywhere on the web: only the server's get the token.
+        var data = await SendRequiredAsync(AuthorizedRequest(url), ct).ConfigureAwait(false);
         await ImageCache.WriteAsync(url, data, ct).ConfigureAwait(false);
         return data;
     }

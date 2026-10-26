@@ -86,8 +86,13 @@ public partial class DiscMenuViewModel : ViewModelBase, IDisposable
         var start = request.StartTicks;
         // A season's or show's menu (a one-season show's is often its
         // season's): its feature is its episodes, one after another.
-        if (ids is [var only] && only == Navigator.ItemId && await EpisodesOfAsync(only) is { Count: > 0 } episodes)
+        if (ids is [var only] && only == Navigator.ItemId && await EpisodesOfAsync(only) is { } episodes)
         {
+            if (episodes.Count == 0)
+            {
+                if (!closed) AlertMessage = "This menu's season or show has no episodes in this library to play.";
+                return;
+            }
             ids = episodes;
             start = 0;
         }

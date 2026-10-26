@@ -56,6 +56,17 @@ public class JellyfinClientTests
     }
 
     [Fact]
+    public void OnlyRequestsToTheServerCarryTheToken()
+    {
+        using var own = Client.AuthorizedRequest(new Uri("https://jellyfin.example/base/Videos/1/master.m3u8"));
+        Assert.True(own.Headers.Contains("Authorization"));
+        Assert.True(own.Headers.Contains("X-Emby-Authorization"));
+        using var other = Client.AuthorizedRequest(new Uri("https://image.tmdb.org/t/p/w1280/a.jpg"));
+        Assert.False(other.Headers.Contains("Authorization"));
+        Assert.False(other.Headers.Contains("X-Emby-Authorization"));
+    }
+
+    [Fact]
     public void AuthorizationHeaderNamesTheAppAndToken()
     {
         var header = Client.AuthorizationHeader;
