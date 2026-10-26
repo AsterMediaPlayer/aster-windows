@@ -343,10 +343,15 @@ are fetched as they're needed, and only the last few kept in memory.
 An anime episode's opening and ending get the Apple app's song card in the
 lower left, for their first 16 seconds and, when they're long enough, their
 last: the theme, the song and who sings it, and the show. They're found
-from the episode's OP and ED chapters; with none, from its skip markers,
-but only when the OP/ED plugin says one of its themes plays in the episode
-(so an ordinary show's intro gets no card). The plugin names the song when
-it knows it. A music video gets the card as it starts and ends, and so
+from the episode's OP and ED chapters, and show as soon as it plays; with
+none, from its skip markers, but only when the OP/ED plugin or AnimeThemes
+says one of its themes plays in the episode (so an ordinary show's intro
+gets no card). The plugin names the song when it knows it; without the
+plugin (on Emby, say), AnimeThemes does, finding the show by its season's
+AniDB id (with Shoko) or its name and the year the season began, and each
+episode gets the theme made for it (Frieren's first ends with "bliss"
+alone). The details are looked up alongside the stream and fill the card in
+place as they arrive. A music video gets the card as it starts and ends, and so
 does anything a Channel shows. `Aster.Core/Anime` is the port of how they're
 found and what the card says.
 

@@ -159,6 +159,18 @@ public sealed record ThemeInfo(string Kicker, string Title, string? Artists = nu
             parts.Count == 0 ? null : string.Join(" · ", parts));
     }
 
+    /// <summary>From AnimeThemes, when the server has no OP/ED plugin.</summary>
+    public static ThemeInfo From(KnownTheme theme, string series, string? seasonName)
+    {
+        var parts = new[] { seasonName, theme.Episodes is { } episodes ? $"Episodes {episodes}" : null }.OfType<string>().ToList();
+        return new ThemeInfo(
+            $"{(theme.IsOpening ? "Opening" : "Ending")} {theme.Sequence}",
+            theme.SongTitle ?? series,
+            theme.Artists.Count == 0 ? null : string.Join(", ", theme.Artists),
+            theme.SongTitle is null ? null : series,
+            parts.Count == 0 ? null : string.Join(" · ", parts));
+    }
+
     /// <summary>A clip found from chapters alone: which theme it is, and the show.</summary>
     public static ThemeInfo From(ThemeClip clip, string series)
     {
@@ -197,17 +209,19 @@ public static class ThemeMoments
     /// Placed by its OP and ED chapters; with none, by its skip markers, but
     /// only when the OP/ED plugin says a theme plays in it, so an ordinary
     /// show's intro gets no song card. The plugin names the song when it
-    /// knows it.
+    /// knows it; without the plugin, AnimeThemes' <paramref name="knownThemes"/> do.
     /// </summary>
-    public static IReadOnlyList<ThemeMoment> ForEpisode(BaseItem item, IReadOnlyList<MediaSegment> segments, IReadOnlyList<OpEdTheme> pluginThemes)
+    public static IReadOnlyList<ThemeMoment> ForEpisode(BaseItem item, IReadOnlyList<MediaSegment> segments, IReadOnlyList<OpEdTheme> pluginThemes,
+        IReadOnlyList<KnownTheme>? knownThemes = null)
     {
         if (item.Kind != ItemKind.Episode) return [];
         var series = item.SeriesName ?? item.DisplayTitle;
         var playing = pluginThemes.Where(t => t.PlaysInEpisode == true).ToList();
+        var known = (knownThemes ?? []).Where(t => t.PlaysInEpisode(item.IndexNumber)).OrderBy(t => t.EpisodeCount).ToList();
         var found = OpeningsEndings.Find([item])
             .Select(clip => (Opening: clip.Kind == ThemeKind.Opening, Start: clip.StartTicks, End: clip.EndTicks, Clip: (ThemeClip?)clip))
             .ToList();
-        if (found.Count == 0 && playing.Count > 0)
+        if (found.Count == 0 && (playing.Count > 0 || known.Count > 0))
         {
             foreach (var segment in segments.Where(s => s.Type is "Intro" or "Outro" && s.EndTicks > s.StartTicks))
             {
@@ -218,9 +232,11 @@ public static class ThemeMoments
         {
             var info = playing.FirstOrDefault(t => t.IsOpening == entry.Opening) is { } theme
                 ? ThemeInfo.From(theme, series, item.SeasonName)
-                : entry.Clip is { } clip
-                    ? ThemeInfo.From(clip, series)
-                    : new ThemeInfo(entry.Opening ? "Opening" : "Ending", series, Detail: item.EpisodeCode);
+                : known.FirstOrDefault(t => t.IsOpening == entry.Opening) is { } knownTheme
+                    ? ThemeInfo.From(knownTheme, series, item.SeasonName)
+                    : entry.Clip is { } clip
+                        ? ThemeInfo.From(clip, series)
+                        : new ThemeInfo(entry.Opening ? "Opening" : "Ending", series, Detail: item.EpisodeCode);
             return new ThemeMoment(entry.Start / 10_000_000.0, entry.End / 10_000_000.0, info);
         }).ToList();
     }

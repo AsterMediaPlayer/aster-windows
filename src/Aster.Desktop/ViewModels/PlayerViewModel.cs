@@ -429,6 +429,8 @@ public partial class PlayerViewModel : ViewModelBase
             Title = item.SeriesName ?? item.DisplayTitle;
             Subtitle = item.SeriesName is null ? string.Join(" · ", item.MetadataLine) : $"{item.EpisodeCode} · {item.DisplayTitle}";
             ShowChannel(item);
+            // The song cards' details, looked up alongside the stream so they're in by the opening.
+            themeDetails = settings.ThemeCards && item.Kind == ItemKind.Episode && entry.ClipEndTicks is null ? ThemeDetailsAsync(item) : null;
             await LoadTitleAsync(item);
             if (stopped) return;
             if (HasTimeline)
@@ -443,11 +445,19 @@ public partial class PlayerViewModel : ViewModelBase
                 if (settings.ThemeCards && entry.ThemeCard is { } card) themeMoments = [new ThemeMoment(entry.StartTicks / 10_000_000.0, clipEnd / 10_000_000.0, card)];
                 return;
             }
+            // An episode's cards from its OP and ED chapters at once (an
+            // opening at the very start is over before the lookups finish),
+            // gaining the song's details in place as they come.
+            if (settings.ThemeCards && item.Kind == ItemKind.Episode)
+            {
+                themeMoments = ThemeMoments.ForEpisode(item, [], []);
+                _ = LoadThemeMomentsAsync(item);
+            }
             // A channel gets no markers (skipping an intro would leave the
             // schedule behind) and goes on to what it's showing, never Up Next.
             if (OnChannel)
             {
-                await LoadThemeMomentsAsync(item, []);
+                if (item.Kind != ItemKind.Episode) await LoadThemeMomentsAsync(item);
                 return;
             }
 
@@ -462,7 +472,8 @@ public partial class PlayerViewModel : ViewModelBase
             segments = loaded;
             UpNext = after;
             System.Diagnostics.Debug.WriteLine($"Playback: markers {string.Join(", ", loaded.Select(s => $"{s.Type} {s.StartTicks / 10_000_000}-{s.EndTicks / 10_000_000}s"))}; up next {after?.DisplayTitle ?? "none"}");
-            await LoadThemeMomentsAsync(item, loaded);
+            // Markers place the cards when there are no chapters.
+            await LoadThemeMomentsAsync(item);
         }
         catch (Exception error) when (IsServerError(error) || error is MpvException or ObjectDisposedException or NoVideoOutputException)
         {
@@ -870,6 +881,7 @@ public partial class PlayerViewModel : ViewModelBase
         scrubPreview = null;
         PreviewAt(null);
         themeMoments = [];
+        themeDetails = null;
         ThemeCardOpacity = 0;
         HasStarted = false;
         ErrorMessage = null;
@@ -1201,20 +1213,36 @@ public partial class PlayerViewModel : ViewModelBase
     /// <summary>1 while the card shows, 0 while it doesn't; the view fades between them.</summary>
     [ObservableProperty] public partial double ThemeCardOpacity { get; private set; }
 
+    /// <summary>The episode's themes: the OP/ED plugin's, else (without the plugin) AnimeThemes'.</summary>
+    private Task<(IReadOnlyList<OpEdTheme> Plugin, IReadOnlyList<KnownTheme> Known)>? themeDetails;
+
+    private async Task<(IReadOnlyList<OpEdTheme> Plugin, IReadOnlyList<KnownTheme> Known)> ThemeDetailsAsync(BaseItem item)
+    {
+        if (await client.OpEdThemesAsync(item.Id) is { } plugin) return (plugin, []);
+        var known = await AnimeThemesLookup.ForEpisodeAsync(item, client);
+        System.Diagnostics.Debug.WriteLine($"Playback: AnimeThemes has {known.Count} themes for {item.SeriesName}");
+        return ([], known);
+    }
+
     /// <summary>
     /// Finds the song cards once playing, as the Apple app does: from an
-    /// episode's chapters, or its skip markers when the OP/ED plugin says a
-    /// theme plays in it; a music video's for the whole video.
+    /// episode's chapters, or its skip markers (as far as they've loaded)
+    /// when the OP/ED plugin or AnimeThemes says a theme plays in it; a music
+    /// video's for the whole video.
     /// </summary>
-    private async Task LoadThemeMomentsAsync(BaseItem item, IReadOnlyList<MediaSegment> markers)
+    private async Task LoadThemeMomentsAsync(BaseItem item)
     {
         if (!settings.ThemeCards) return;
-        IReadOnlyList<ThemeMoment> moments = item.Kind switch
+        IReadOnlyList<ThemeMoment> moments;
+        if (item.Kind == ItemKind.Episode)
         {
-            ItemKind.Episode => ThemeMoments.ForEpisode(item, markers, await client.OpEdThemesAsync(item.Id) ?? []),
-            ItemKind.MusicVideo => await ThemeMoments.ForMusicVideoAsync(item, client),
-            _ => [],
-        };
+            var (plugin, known) = await (themeDetails ??= ThemeDetailsAsync(item));
+            moments = ThemeMoments.ForEpisode(item, segments, plugin, known);
+        }
+        else
+        {
+            moments = item.Kind == ItemKind.MusicVideo ? await ThemeMoments.ForMusicVideoAsync(item, client) : [];
+        }
         if (stopped || Item?.Id != item.Id) return;
         themeMoments = moments;
         System.Diagnostics.Debug.WriteLine($"Playback: song cards {string.Join(", ", moments.Select(m => $"{m.Info.Kicker} {m.Start:0}-{m.End:0}s"))}");

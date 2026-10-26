@@ -64,7 +64,7 @@
                         </DockPanel>
                     </Button>
                     <Border Classes="note">
-                        <TextBlock Text="As an episode's opening or ending starts, and again as it finishes, the song and artist show in the corner, like a music channel. Found from the episode's OP and ED chapters, with the song named by the OP/ED plugin when the server has it. Music videos get the card too, as they start and end." />
+                        <TextBlock Text="As an episode's opening or ending starts, and again as it finishes, the song and artist show in the corner, like a music channel. Found from the episode's OP and ED chapters, with the song named by the OP/ED plugin when the server has it, else by AnimeThemes. Music videos get the card too, as they start and end." />
                     </Border>
                 </StackPanel>
 
