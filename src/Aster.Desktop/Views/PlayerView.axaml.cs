@@ -53,6 +53,8 @@ public partial class PlayerView : UserControl
         SeekBar.SizeChanged += (_, _) => MarkChapters();
         FullScreenButton.Click += (_, _) => ToggleFullScreen();
         BugLayer.SizeChanged += (_, _) => PlaceBug();
+        BottomBar.SizeChanged += (_, _) => PlaceThemeCard();
+        FlickRow.SizeChanged += (_, _) => PlaceThemeCard();
         DataContextChanged += (_, _) =>
         {
             if (Model is not { } model) return;
@@ -61,6 +63,7 @@ public partial class PlayerView : UserControl
                 if (change.PropertyName is nameof(PlayerViewModel.VideoAspect) or nameof(PlayerViewModel.BugCorner) or nameof(PlayerViewModel.BugWidth)) PlaceBug();
                 if (change.PropertyName is nameof(PlayerViewModel.Chapters) or nameof(PlayerViewModel.Duration)) MarkChapters();
                 if (change.PropertyName is nameof(PlayerViewModel.PreviewSeconds)) PlacePreview();
+                if (change.PropertyName is nameof(PlayerViewModel.ControlsVisible) or nameof(PlayerViewModel.Flick)) PlaceThemeCard();
             };
         };
         Surface.PointerMoved += (_, _) => Model?.PokeControls();
@@ -87,6 +90,19 @@ public partial class PlayerView : UserControl
     }
 
     private PlayerViewModel? Model => DataContext as PlayerViewModel;
+
+    /// <summary>
+    /// The song card above the channel row or the timeline while either is
+    /// up (the bar's shade above the timeline is left to cover it), and back
+    /// in its corner as they go.
+    /// </summary>
+    private void PlaceThemeCard()
+    {
+        var lift = Model?.Flick is not null ? FlickRow.Bounds.Height + FlickRow.Margin.Bottom
+            : Model?.ControlsVisible == true ? BottomBar.Bounds.Height - BottomBar.Padding.Top
+            : 0;
+        ThemeCardLayer.RenderTransform = Avalonia.Media.Transformation.TransformOperations.Parse(FormattableString.Invariant($"translateY({-Math.Max(0, lift - 24):0}px)"));
+    }
 
     /// <summary>
     /// The bug in its corner of the picture itself, so a 4:3 show between

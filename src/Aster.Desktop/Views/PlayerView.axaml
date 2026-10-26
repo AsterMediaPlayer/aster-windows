@@ -129,11 +129,13 @@
             </StackPanel>
         </Border>
 
-        <!-- An opening's or ending's song card, in the lower left like a music channel's credit; under the controls. -->
-        <Panel IsHitTestVisible="False" HorizontalAlignment="Left" VerticalAlignment="Bottom" Opacity="{Binding ThemeCardOpacity}">
+        <!-- An opening's or ending's song card, in the lower left like a music channel's credit;
+             lifted above the timeline or the channel row while they're up, never behind them. -->
+        <Panel x:Name="ThemeCardLayer" IsHitTestVisible="False" HorizontalAlignment="Left" VerticalAlignment="Bottom" Opacity="{Binding ThemeCardOpacity}">
             <Panel.Transitions>
                 <Transitions>
                     <DoubleTransition Property="Opacity" Duration="0:0:0.6" Easing="SineEaseInOut" />
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.3" Easing="SineEaseInOut" />
                 </Transitions>
             </Panel.Transitions>
             <!-- A soft shade from the corner, so the text reads over bright frames. -->
@@ -187,7 +189,7 @@
                 </DockPanel>
             </Border>
 
-            <Border Grid.Row="2" Padding="24,48,24,16">
+            <Border x:Name="BottomBar" Grid.Row="2" Padding="24,48,24,16">
                 <Border.Background>
                     <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
                         <GradientStop Offset="0" Color="#00000000" />
@@ -281,7 +283,7 @@
         </Grid>
 
         <!-- The channel row (Up on a channel): what's on the picked channel, then the channels either side of it. -->
-        <Border DataContext="{Binding Flick}" x:DataType="vm:ChannelFlickViewModel"
+        <Border x:Name="FlickRow" DataContext="{Binding Flick}" x:DataType="vm:ChannelFlickViewModel"
                 IsVisible="{Binding $self.DataContext, Converter={x:Static ObjectConverters.IsNotNull}}"
                 VerticalAlignment="Bottom" Margin="48,0,48,36" Padding="28" CornerRadius="28" Background="#E01C1C1C"
                 BoxShadow="0 12 40 0 #80000000">
