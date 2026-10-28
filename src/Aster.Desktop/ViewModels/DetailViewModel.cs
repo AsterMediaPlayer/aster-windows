@@ -457,15 +457,15 @@ public partial class DetailViewModel : ViewModelBase, IRefreshable
     /// rows after it; with the panel turned off, full screen (the page
     /// needn't follow, since nothing it shows changes).
     /// </summary>
-    private void PlayTheme(PlaybackQueueItem entry)
+    /// <param name="cut">The version picked from the card's menu; null, the one Settings prefers.</param>
+    private void PlayTheme(OpeningEndingCard card, ThemeCut? cut)
     {
-        var cards = Openings.Concat(Endings).ToList();
-        if (Aster.Core.AppSettings.Current.ThemePanel && cards.FirstOrDefault(c => ReferenceEquals(c.Entry, entry))?.DeckEntry is { } chosen)
+        if (Aster.Core.AppSettings.Current.ThemePanel && card.DeckEntryFor(cut) is { } chosen)
         {
-            navigator.Deck.Play(chosen, DeckQueue(cards), Item);
+            navigator.Deck.Play(chosen, DeckQueue(Openings.Concat(Endings)), Item);
             return;
         }
-        navigator.Play(entry);
+        if (card.EntryFor(cut) is { } entry) navigator.Play(entry);
     }
 
     // ---- Openings and endings: Play All, Shuffle, Watch OP and Watch ED ----
@@ -508,11 +508,11 @@ public partial class DetailViewModel : ViewModelBase, IRefreshable
     public bool HasWatchOpening => WatchOpening is not null;
     public bool HasWatchEnding => WatchEnding is not null;
 
-    /// <summary>Full screen, its song card in the corner, as the Apple app's Watch OP opens in the player.</summary>
+    /// <summary>Full screen, its song card in the corner, as the Apple app's Watch OP opens in the player: always the TV size.</summary>
     [RelayCommand]
     private void Watch(string which)
     {
-        if ((which == "ED" ? WatchEnding : WatchOpening)?.Entry is { } entry) navigator.Play(entry);
+        if ((which == "ED" ? WatchEnding : WatchOpening)?.TvSizeEntry is { } entry) navigator.Play(entry);
     }
 
     /// <summary>

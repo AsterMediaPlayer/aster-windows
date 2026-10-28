@@ -106,8 +106,9 @@ public class OpeningsEndingsTests
     [Fact]
     public void ThePluginsKickerNamesItsVersion()
     {
-        var theme = Theme("ED", 2, plays: true, "bliss") with { Version = 2, Variant = "TV", IsFullVersion = true };
+        var theme = Theme("ED", 2, plays: true, "bliss") with { Version = 2, Variant = "TV", Cut = ThemeCut.Full };
         Assert.Equal("Ending 2 · Version 2 · TV · Full Version", ThemeInfo.From(theme, "Frieren", null).Kicker);
+        Assert.EndsWith("· Music Video", ThemeInfo.From(theme with { Cut = ThemeCut.MusicVideo }, "Frieren", null).Kicker);
     }
 
     [Fact]

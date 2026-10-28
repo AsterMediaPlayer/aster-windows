@@ -225,7 +225,8 @@ sound" gives it its sound, as quiet as theme music.
 opening or ending picked on a show's Music tab plays in a panel at the top
 right, then the rest after it like a playlist; **Play All** and **Shuffle**
 play them all (skipping any marked as a spoiler or NSFW). It keeps playing
-while you browse, with Previous, Play/Pause, Next, Stop and Go to the Show.
+while you browse, with Previous, Play/Pause, Next, Stop and Go to the Show,
+and pages leave it room on the right rather than going under it.
 **Full screen** grows the same panel to fill the screen, its song card in
 the corner (Esc goes back, Space pauses, the arrows skip): mpv's video can't
 move between views, so the panel's one view grows rather than handing over.
@@ -238,9 +239,16 @@ picked's opening and ending full screen, with the song card (the plugin's,
 else one found in chapters, else one of the whole show); on an episode's
 page, the ones in that episode.
 
-Not yet: full versions (a theme's full-length cut). Chinese titles sort
-under # in the letter index; the Apple app files them by pinyin, which .NET
-has no table for.
+**Versions**: where the OP/ED plugin has them, a song plays in the version
+Settings ▸ Title Pages ▸ Version to play prefers: the TV size, the
+full-length song (`OP1-Full`) or its music video (`OP1-MV`), else the
+nearest it has (a music video falls back to the full version, then the TV
+size). A card shows **Full** and **MV** when it has them, and a right click
+plays any version (one still being made shows, greyed). Watch OP and the
+opening behind the page always use the TV size.
+
+Chinese titles sort under # in the letter index; the Apple app files them
+by pinyin, which .NET has no table for.
 
 ## Disc menus
 
@@ -379,8 +387,7 @@ About pages on one page, as the Mac's Settings window has them:
   minutes to 4 hours, the window in the background, minimized or closed,
   but not while a video plays), checked by the server, and forgets it.
 
-Not yet: the Channels page, and full versions, which wait on those
-features.
+Not yet: the Channels page, which waits on that feature.
 
 ## The player
 

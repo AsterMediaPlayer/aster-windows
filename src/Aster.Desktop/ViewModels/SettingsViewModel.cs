@@ -118,6 +118,20 @@ public sealed partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] public partial bool ThemeVideos { get; set; }
     [ObservableProperty] public partial bool OpeningSound { get; set; }
     [ObservableProperty] public partial bool ThemePanel { get; set; }
+
+    public IReadOnlyList<SettingOption<ThemeCut>> ThemeCuts { get; } =
+        Enum.GetValues<ThemeCut>().Select(cut => new SettingOption<ThemeCut>(cut.SettingTitle, cut)).ToList();
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ThemeCutChoices))]
+    public partial SettingOption<ThemeCut>? ThemeCut { get; set; }
+
+    public IReadOnlyList<TrackChoice> ThemeCutChoices => Choices(ThemeCuts, ThemeCut, c => ThemeCut = c);
+
+    partial void OnThemeCutChanged(SettingOption<ThemeCut>? value)
+    {
+        if (value is not null) Change(s => s with { ThemeCut = value.Value });
+    }
     [ObservableProperty] public partial bool PreferDiscMenu { get; set; }
     [ObservableProperty] public partial bool DiscMenuSounds { get; set; }
 
@@ -161,6 +175,7 @@ public sealed partial class SettingsViewModel : ViewModelBase
         ThemeVideos = settings.ThemeVideos;
         OpeningSound = settings.OpeningSound;
         ThemePanel = settings.ThemePanel;
+        ThemeCut = ThemeCuts.FirstOrDefault(c => c.Value == settings.ThemeCut) ?? ThemeCuts[0];
         PreferDiscMenu = settings.PreferDiscMenu;
         DiscMenuSounds = settings.DiscMenuSounds;
         showing = false;

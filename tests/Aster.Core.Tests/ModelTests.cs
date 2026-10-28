@@ -106,13 +106,35 @@ public class ModelTests
             Id = "t", Type = "OP", Slug = "OP1", Version = 2,
             VideoMp4Url = "/short.mp4", FullVideoMp4Url = "/full.mp4", FullLibraryItemId = "lib-full",
         };
-        var full = theme.FullVersion!;
+        var full = theme.WithCut(ThemeCut.Full)!;
         Assert.Equal("/full.mp4", full.PlayablePath);
         Assert.Equal("lib-full", full.LibraryItemId);
-        Assert.True(full.IsFull);
-        Assert.Null(full.FullVersion);
+        Assert.Equal(ThemeCut.Full, full.PlayedCut);
+        // A version's own versions are only itself.
+        Assert.Null(full.WithCut(ThemeCut.MusicVideo));
         Assert.Equal("OP1 v2", theme.Code);
-        Assert.Same(theme, theme.WithVersion(full: false));
+        Assert.Same(theme, theme.WithCut(ThemeCut.TvSize));
+    }
+
+    /// <summary>Settings' version, or the nearest the theme has: a music video falls back to the full version, then the TV size.</summary>
+    [Fact]
+    public void ThePreferredVersionFallsBackToTheNearest()
+    {
+        var both = new OpEdTheme
+        {
+            Id = "t", Type = "OP", Slug = "OP1",
+            VideoMp4Url = "/tv.mp4", FullVideoMp4Url = "/full.mp4", MvVideoMp4Url = "/mv.mp4",
+        };
+        Assert.Equal([ThemeCut.TvSize, ThemeCut.Full, ThemeCut.MusicVideo], both.AvailableCuts);
+        Assert.Equal("/mv.mp4", both.Preferring(ThemeCut.MusicVideo).PlayablePath);
+
+        var fullOnly = both with { MvVideoMp4Url = null, HasMusicVideo = true };
+        Assert.Equal("/full.mp4", fullOnly.Preferring(ThemeCut.MusicVideo).PlayablePath);
+        Assert.Equal([ThemeCut.MusicVideo], fullOnly.PreparingCuts);
+
+        var tvOnly = both with { MvVideoMp4Url = null, FullVideoMp4Url = null };
+        Assert.Same(tvOnly, tvOnly.Preferring(ThemeCut.MusicVideo));
+        Assert.Empty(tvOnly.PreparingCuts);
     }
 
     [Fact]

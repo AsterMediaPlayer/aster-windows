@@ -994,9 +994,63 @@ public sealed record OpEdTheme
     /// <summary>From <c>LibraryItems/{id}/Theme</c>: that item is the full version.</summary>
     public bool? IsFullVersionItem { get; init; }
 
-    /// <summary>This is the full version, made by <c>FullVersion</c> (not from the server).</summary>
+    /// <summary>
+    /// Its music video beside it ("OP1-MV"): its own playable copies and
+    /// published items, as the full version's. See <c>Cut</c>.
+    /// </summary>
+    public bool? HasMusicVideo { get; init; }
+
+    public string? MvVideoMp4Url { get; init; }
+    public string? MvVideoMp4Status { get; init; }
+    public string? MvAudioM4aUrl { get; init; }
+    public string? MvAudioM4aStatus { get; init; }
+    public string? MvLibraryItemId { get; init; }
+    public string? MvSongItemId { get; init; }
+
+    /// <summary>From <c>LibraryItems/{id}/Theme</c>: that item is the music video.</summary>
+    public bool? IsMusicVideoItem { get; init; }
+
+    /// <summary>The version this is: made by <c>Cut</c> (not from the server); the TV size as the server sends it.</summary>
     [JsonIgnore]
-    public bool IsFullVersion { get; init; }
+    public ThemeCut Cut { get; init; }
+}
+
+/// <summary>Which version of an opening or ending plays: the TV size, the full song ("OP1-Full"), or its music video ("OP1-MV").</summary>
+public enum ThemeCut
+{
+    TvSize,
+    Full,
+    MusicVideo,
+}
+
+public static class ThemeCutExtensions
+{
+    extension(ThemeCut cut)
+    {
+        /// <summary>"Full", "Music Video": after a song's title, "Yuusha (Full)".</summary>
+        public string? Label => cut switch
+        {
+            ThemeCut.Full => "Full",
+            ThemeCut.MusicVideo => "Music Video",
+            _ => null,
+        };
+
+        /// <summary>A card's menu.</summary>
+        public string PlayTitle => cut switch
+        {
+            ThemeCut.Full => "Play Full Version",
+            ThemeCut.MusicVideo => "Play Music Video",
+            _ => "Play TV Size",
+        };
+
+        /// <summary>Settings' choice.</summary>
+        public string SettingTitle => cut switch
+        {
+            ThemeCut.Full => "Full Version",
+            ThemeCut.MusicVideo => "Music Video",
+            _ => "TV Size",
+        };
+    }
 }
 
 public static class OpEdThemeExtensions
@@ -1012,16 +1066,17 @@ public static class OpEdThemeExtensions
         public string? PlayablePath => theme.VideoMp4Url ?? theme.AudioM4aUrl;
 
         /// <summary>
-        /// The full-length version as a theme of its own: the same theme (same
-        /// id, so it shows as playing on its card) with the full copies and
-        /// items in place of the TV-size ones. Null when there's none playable.
+        /// Another version as a theme of its own: the same theme (same id, so
+        /// it shows as playing on its card) with that version's copies and
+        /// items in place of the TV-size ones. Null when it hasn't got that
+        /// one playable. The Apple app's cut(_:).
         /// </summary>
-        public OpEdTheme? FullVersion
+        public OpEdTheme? WithCut(ThemeCut wanted)
         {
-            get
+            if (theme.Cut != ThemeCut.TvSize) return wanted == theme.Cut ? theme : null;
+            return wanted switch
             {
-                if (theme.IsFullVersion || (theme.FullVideoMp4Url is null && theme.FullAudioM4aUrl is null)) return null;
-                return theme with
+                ThemeCut.Full when theme.FullVideoMp4Url is not null || theme.FullAudioM4aUrl is not null => theme with
                 {
                     VideoMp4Url = theme.FullVideoMp4Url,
                     VideoMp4Status = theme.FullVideoMp4Status,
@@ -1029,16 +1084,53 @@ public static class OpEdThemeExtensions
                     AudioM4aStatus = theme.FullAudioM4aStatus,
                     LibraryItemId = theme.FullLibraryItemId,
                     SongItemId = theme.FullSongItemId,
-                    IsFullVersion = true,
-                };
+                    Cut = ThemeCut.Full,
+                },
+                ThemeCut.MusicVideo when theme.MvVideoMp4Url is not null || theme.MvAudioM4aUrl is not null => theme with
+                {
+                    VideoMp4Url = theme.MvVideoMp4Url,
+                    VideoMp4Status = theme.MvVideoMp4Status,
+                    AudioM4aUrl = theme.MvAudioM4aUrl,
+                    AudioM4aStatus = theme.MvAudioM4aStatus,
+                    LibraryItemId = theme.MvLibraryItemId,
+                    SongItemId = theme.MvSongItemId,
+                    Cut = ThemeCut.MusicVideo,
+                },
+                ThemeCut.TvSize => theme,
+                _ => null,
+            };
+        }
+
+        /// <summary>The versions it can play, TV size first.</summary>
+        public IReadOnlyList<ThemeCut> AvailableCuts => Enum.GetValues<ThemeCut>().Where(c => theme.WithCut(c) is not null).ToList();
+
+        /// <summary>Versions the server has but is still making a playable copy of.</summary>
+        public IReadOnlyList<ThemeCut> PreparingCuts
+        {
+            get
+            {
+                if (theme.Cut != ThemeCut.TvSize) return [];
+                var preparing = new List<ThemeCut>();
+                if (theme.HasFullVersion == true && theme.WithCut(ThemeCut.Full) is null) preparing.Add(ThemeCut.Full);
+                if (theme.HasMusicVideo == true && theme.WithCut(ThemeCut.MusicVideo) is null) preparing.Add(ThemeCut.MusicVideo);
+                return preparing;
             }
         }
 
-        /// <summary>The full version when <paramref name="full"/> and there is one, else this one.</summary>
-        public OpEdTheme WithVersion(bool full) => full ? theme.FullVersion ?? theme : theme;
+        /// <summary>The version Settings prefers, or the nearest it has: a music video falls back to the full version, then the TV size.</summary>
+        public OpEdTheme Preferring(ThemeCut preference) => preference switch
+        {
+            ThemeCut.Full => theme.WithCut(ThemeCut.Full) ?? theme,
+            ThemeCut.MusicVideo => theme.WithCut(ThemeCut.MusicVideo) ?? theme.WithCut(ThemeCut.Full) ?? theme,
+            _ => theme,
+        };
 
-        /// <summary>Whether this is (or, from a library item, plays) the full version.</summary>
-        public bool IsFull => theme.IsFullVersion || theme.IsFullVersionItem == true;
+        /// <summary>The version this plays: made by <c>WithCut</c>, or from a library item.</summary>
+        public ThemeCut PlayedCut =>
+            theme.Cut != ThemeCut.TvSize ? theme.Cut
+            : theme.IsMusicVideoItem == true ? ThemeCut.MusicVideo
+            : theme.IsFullVersionItem == true ? ThemeCut.Full
+            : ThemeCut.TvSize;
 
         /// <summary>Only the song plays: there's no video copy.</summary>
         public bool IsAudioOnly => theme.VideoMp4Url is null && theme.AudioM4aUrl is not null;

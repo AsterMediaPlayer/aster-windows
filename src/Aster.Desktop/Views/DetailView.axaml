@@ -12,11 +12,22 @@
         </DataTemplate>
 
         <!-- An opening or ending: "OP 1" (or the clip's length) on its picture, then the song, artist and where it's from. -->
+        <!-- A version in a card's menu, the one Settings prefers ticked (as Settings' own lists, whose style is theirs alone). -->
+        <ControlTheme x:Key="CutChoice" TargetType="MenuItem" BasedOn="{StaticResource {x:Type MenuItem}}" x:DataType="vm:TrackChoice">
+            <Setter Property="Header" Value="{Binding Title}" />
+            <Setter Property="Command" Value="{Binding Select}" />
+            <Setter Property="ToggleType" Value="Radio" />
+            <Setter Property="IsChecked" Value="{Binding IsSelected, Mode=OneWay}" />
+        </ControlTheme>
         <DataTemplate x:Key="OpeningEndingTemplate" x:DataType="vm:OpeningEndingCard">
             <StackPanel Width="{StaticResource LandscapeWidth}" Spacing="8">
                 <Button Theme="{StaticResource CardButton}" Command="{Binding PlayCommand}" IsEnabled="{Binding CanPlay}"
                         Width="{StaticResource LandscapeWidth}" Height="{StaticResource LandscapeHeight}"
                         AutomationProperties.Name="{Binding Title}">
+                    <!-- A right click: the other versions (TV size, full, music video), where the plugin has them. -->
+                    <Button.ContextFlyout>
+                        <MenuFlyout ItemsSource="{Binding Cuts}" ItemContainerTheme="{StaticResource CutChoice}" />
+                    </Button.ContextFlyout>
                     <Panel>
                         <TextBlock Text="{x:Static vm:OpeningEndingCard.Placeholder}" FontFamily="{StaticResource IconFont}" FontSize="36" Opacity="0.35"
                                    HorizontalAlignment="Center" VerticalAlignment="Center" />
@@ -32,6 +43,12 @@
                             <TextBlock Text="{Binding Badge}" />
                         </Border>
                         <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Right" VerticalAlignment="Bottom">
+                            <Border Classes="pill" IsVisible="{Binding HasFull}" ToolTip.Tip="Has its full-length song: right-click to play it">
+                                <TextBlock Text="Full" />
+                            </Border>
+                            <Border Classes="pill" IsVisible="{Binding HasMusicVideo}" ToolTip.Tip="Has its music video: right-click to play it">
+                                <TextBlock Text="MV" />
+                            </Border>
                             <Border Classes="pill" IsVisible="{Binding IsAudioOnly}">
                                 <TextBlock Text="Audio only" />
                             </Border>

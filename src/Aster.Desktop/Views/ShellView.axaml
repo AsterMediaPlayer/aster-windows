@@ -102,6 +102,10 @@
             <Setter Property="VerticalAlignment" Value="Center" />
             <Setter Property="FontFamily" Value="{StaticResource IconFont}" />
         </Style>
+        <!-- Room on the right for the Now Playing panel (400 wide, 20 from the edge), as the Apple app's pages leave for its slim one. -->
+        <Style Selector="ContentControl#Page.deck">
+            <Setter Property="Margin" Value="0,0,440,0" />
+        </Style>
     </UserControl.Styles>
 
     <Panel>
@@ -116,8 +120,8 @@
             </ContentControl.ContentTemplate>
         </ContentControl>
 
-        <!-- The page, the whole width of the window. -->
-        <ContentControl x:Name="Page" Content="{Binding CurrentPage}" />
+        <!-- The page, the whole width of the window; while the Now Playing panel's at the side, all but its column. -->
+        <ContentControl x:Name="Page" Content="{Binding CurrentPage}" Classes.deck="{Binding Deck.TakesRoom}" />
 
         <!-- Collapsed: the tab in a capsule (on a tab's own page; a page opened from one has its Back there), and the song or book playing. -->
         <StackPanel Classes="collapsed" Classes.hidden="{Binding IsSidebarOpen}" Orientation="Horizontal" Spacing="10" Margin="20,16,0,0"

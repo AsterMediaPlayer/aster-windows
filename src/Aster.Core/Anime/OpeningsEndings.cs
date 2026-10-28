@@ -149,7 +149,12 @@ public sealed record ThemeInfo(string Kicker, string Title, string? Artists = nu
         var kicker = $"{(theme.IsOpening ? "Opening" : "Ending")} {theme.Sequence}";
         if (theme.Version > 1) kicker += $" · Version {theme.Version}";
         if (!string.IsNullOrEmpty(theme.Variant)) kicker += $" · {theme.Variant}";
-        if (theme.IsFull) kicker += " · Full Version";
+        kicker += theme.PlayedCut switch
+        {
+            ThemeCut.Full => " · Full Version",
+            ThemeCut.MusicVideo => " · Music Video",
+            _ => "",
+        };
         var parts = new[] { seasonName, theme.Episodes is { } episodes ? $"Episodes {episodes}" : null }.OfType<string>().ToList();
         return new ThemeInfo(
             kicker,

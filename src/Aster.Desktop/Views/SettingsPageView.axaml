@@ -175,6 +175,19 @@
                     <Border Classes="note">
                         <TextBlock Text="Openings and endings picked on a show's Music tab play in a panel at the top right, one after another, and keep playing while you browse. Off, they play full screen, one at a time." />
                     </Border>
+                    <Button Classes="row" AutomationProperties.Name="Version to play">
+                        <DockPanel>
+                            <TextBlock Classes="chevron" />
+                            <TextBlock Classes="value" Text="{Binding ThemeCut.Title}" />
+                            <TextBlock Text="Version to play" VerticalAlignment="Center" />
+                        </DockPanel>
+                        <Button.Flyout>
+                            <MenuFlyout Placement="BottomEdgeAlignedRight" ItemsSource="{Binding ThemeCutChoices}" ItemContainerTheme="{StaticResource SettingChoice}" />
+                        </Button.Flyout>
+                    </Button>
+                    <Border Classes="note">
+                        <TextBlock Text="Where the server has it, a show's Music tab plays this version of each song: the TV size, the full-length song (an OP1-Full file beside OP1 in the OP/ED plugin's folder) or its music video (OP1-MV). A song without it plays the nearest it has: a music video falls back to the full version, then the TV size. Right-click a song's card to play another. Watch OP and the opening behind a show's page always use the TV size." />
+                    </Border>
                 </StackPanel>
 
                 <!-- Account: the server in use, then every server signed in to, to switch between. -->

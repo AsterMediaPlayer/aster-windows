@@ -27,6 +27,9 @@ public sealed record AppSettings
     /// <summary>Openings and endings picked on a show's Music tab play in the Now Playing panel, one after another; off, full screen, one at a time.</summary>
     public bool ThemePanel { get; init; } = true;
 
+    /// <summary>The version of each song a show's Music tab plays, where the OP/ED plugin has it (else the nearest it has).</summary>
+    public Jellyfin.ThemeCut ThemeCut { get; init; }
+
     /// <summary>A title's theme song, played quietly on its page.</summary>
     public bool ThemeMusic { get; init; }
 

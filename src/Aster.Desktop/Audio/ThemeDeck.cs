@@ -61,7 +61,7 @@ public sealed partial class ThemeDeck : ObservableObject, IDisposable
     [ObservableProperty] public partial MpvPlayer? Player { get; private set; }
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsActive), nameof(ShowsArtwork))]
+    [NotifyPropertyChangedFor(nameof(IsActive), nameof(ShowsArtwork), nameof(TakesRoom))]
     public partial ThemeDeckEntry? Current { get; private set; }
 
     [ObservableProperty] public partial bool IsPlaying { get; private set; }
@@ -80,13 +80,16 @@ public sealed partial class ThemeDeck : ObservableObject, IDisposable
 
     /// <summary>The panel fills the window (and the window the screen), the song card over it.</summary>
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(ShowsCard))]
+    [NotifyPropertyChangedFor(nameof(ShowsCard), nameof(TakesRoom))]
     public partial bool IsFullScreen { get; set; }
 
     /// <summary>The show it was started from, for Go to the Show.</summary>
     [ObservableProperty] public partial BaseItem? Show { get; private set; }
 
     public bool IsActive => Current is not null;
+
+    /// <summary>The panel's at the side, so pages leave it room on the right rather than going under it.</summary>
+    public bool TakesRoom => IsActive && !IsFullScreen;
 
     /// <summary>A song with no video shows its picture in the video's place.</summary>
     public bool ShowsArtwork => Current is { HasVideo: false };

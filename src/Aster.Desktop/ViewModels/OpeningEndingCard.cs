@@ -1,7 +1,9 @@
 // A card in an anime show's Openings and Endings rows: a theme from the
 // OP/ED plugin, or a clip found in an episode's chapters. A port of the
 // Apple app's ThemeCard and ThemeClipLockup: a click plays it in the Now
-// Playing panel, or with the panel turned off, full screen.
+// Playing panel, or with the panel turned off, full screen. A plugin theme
+// plays the version Settings prefers (TV size, full, or music video, or the
+// nearest it has), and its menu (a right click) plays any other.
 
 using System;
 using System.Linq;
@@ -16,19 +18,35 @@ namespace Aster.Desktop.ViewModels;
 
 public partial class OpeningEndingCard : ObservableObject
 {
-    private readonly Action<PlaybackQueueItem> play;
-    private readonly PlaybackQueueItem? entry;
+    private readonly Action<OpeningEndingCard, ThemeCut?> play;
 
-    private OpeningEndingCard(Action<PlaybackQueueItem> play, PlaybackQueueItem? entry)
+    /// <summary>What a version plays (null: the one Settings prefers); null while it's still being made.</summary>
+    private readonly Func<ThemeCut?, PlaybackQueueItem?> entryFor;
+
+    /// <summary>A plugin theme, as the server sends it (the TV size); null for a clip.</summary>
+    private readonly OpEdTheme? theme;
+
+    private OpeningEndingCard(Action<OpeningEndingCard, ThemeCut?> play, Func<ThemeCut?, PlaybackQueueItem?> entryFor, OpEdTheme? theme = null)
     {
         this.play = play;
-        this.entry = entry;
+        this.entryFor = entryFor;
+        this.theme = theme;
     }
 
     public bool IsOpening { get; private init; }
 
-    /// <summary>What it plays, full screen or in the Now Playing panel; null while it's still being made.</summary>
-    public PlaybackQueueItem? Entry => entry;
+    /// <summary>What it plays, in the version Settings prefers; null while it's still being made.</summary>
+    public PlaybackQueueItem? Entry => entryFor(null);
+
+    /// <summary>The TV size: what Watch OP and Watch ED play.</summary>
+    public PlaybackQueueItem? TvSizeEntry => entryFor(ThemeCut.TvSize);
+
+    /// <summary>A version of it (null: the one Settings prefers).</summary>
+    public PlaybackQueueItem? EntryFor(ThemeCut? cut) => entryFor(cut);
+
+    /// <summary>The plugin theme in that version (null: Settings'); null for a clip, or a version it hasn't got.</summary>
+    private OpEdTheme? ThemeIn(ThemeCut? cut) =>
+        theme is null ? null : cut is { } wanted ? theme.WithCut(wanted) : theme.Preferring(Aster.Core.AppSettings.Current.ThemeCut);
 
     /// <summary>A plugin theme's season (null for one of the whole show).</summary>
     public string? SeasonId { get; private init; }
@@ -36,9 +54,42 @@ public partial class OpeningEndingCard : ObservableObject
     /// <summary>A clip's season number.</summary>
     public int? SeasonNumber { get; private init; }
 
-    /// <summary>As the Now Playing panel plays it; null when there's nothing to play yet.</summary>
-    public Aster.Desktop.Audio.ThemeDeckEntry? DeckEntry => entry is null ? null : new(
-        $"{entry.ItemId}-{entry.StartTicks}", entry, Title, Artists ?? Detail, entry.ThemeCard, Image, HasVideo: !IsAudioOnly, PlaysUnasked: !IsFlagged);
+    /// <summary>As the Now Playing panel plays it, in the version Settings prefers; null when there's nothing to play yet.</summary>
+    public Aster.Desktop.Audio.ThemeDeckEntry? DeckEntry => DeckEntryFor(null);
+
+    /// <summary>As the Now Playing panel plays a version of it: "Yuusha (Full)".</summary>
+    public Aster.Desktop.Audio.ThemeDeckEntry? DeckEntryFor(ThemeCut? cut)
+    {
+        if (entryFor(cut) is not { } entry) return null;
+        var version = ThemeIn(cut);
+        var title = version?.PlayedCut.Label is { } label ? $"{Title} ({label})" : Title;
+        return new($"{entry.ItemId}-{entry.StartTicks}", entry, title, Artists ?? Detail, entry.ThemeCard, Image,
+            HasVideo: version is null ? !IsAudioOnly : !version.IsAudioOnly, PlaysUnasked: !IsFlagged);
+    }
+
+    /// <summary>The plugin has its full-length song, or its music video (made, or being made).</summary>
+    public bool HasFull => theme is { } t && (t.HasFullVersion == true || t.WithCut(ThemeCut.Full) is not null);
+    public bool HasMusicVideo => theme is { } t && (t.HasMusicVideo == true || t.WithCut(ThemeCut.MusicVideo) is not null);
+
+    /// <summary>
+    /// The card's menu: every version it can play, the one Settings prefers
+    /// ticked, and those still being made (which do nothing yet). Empty with
+    /// only the TV size.
+    /// </summary>
+    public System.Collections.Generic.IReadOnlyList<TrackChoice> Cuts
+    {
+        get
+        {
+            if (theme is null) return [];
+            var preferred = ThemeIn(null)?.PlayedCut;
+            var choices = theme.AvailableCuts.Select((cut, i) => new TrackChoice(i, cut.PlayTitle, cut == preferred, new RelayCommand(() => PlayCut(cut))))
+                .Concat(theme.PreparingCuts.Select((cut, i) => new TrackChoice(100 + i, $"{cut.SettingTitle} (Preparing…)", false, new RelayCommand(() => { }, () => false))))
+                .ToList();
+            return choices.Count > 1 ? choices : [];
+        }
+    }
+
+    public bool HasCuts => Cuts.Count > 0;
 
     /// <summary>The theme's season, place and version, for putting the row in the show's order.</summary>
     public (int Season, int Sequence, int Version) Order { get; private init; }
@@ -70,7 +121,7 @@ public partial class OpeningEndingCard : ObservableObject
 
     public bool IsAudioOnly { get; private init; }
 
-    public bool CanPlay => entry is not null;
+    public bool CanPlay => TvSizeEntry is not null;
 
     /// <summary>"Spoiler", "NSFW", "Preparing…"; then, clicked once, what a second click does.</summary>
     public string? Notice => IsPreparing ? "Preparing…" : IsFlagged ? asking ? "Click again to play" : flagName : null;
@@ -82,7 +133,7 @@ public partial class OpeningEndingCard : ObservableObject
     [RelayCommand]
     private void Play()
     {
-        if (entry is null) return;
+        if (!CanPlay) return;
         if (IsFlagged && !asking)
         {
             asking = true;
@@ -91,27 +142,34 @@ public partial class OpeningEndingCard : ObservableObject
         }
         asking = false;
         OnPropertyChanged(nameof(Notice));
-        play(entry);
+        play(this, null);
+    }
+
+    /// <summary>A version picked from the card's menu: a choice made on purpose, so it plays at once.</summary>
+    private void PlayCut(ThemeCut cut)
+    {
+        if (EntryFor(cut) is not null) play(this, cut);
     }
 
     /// <summary>A plugin theme: its MP4, or its song when there's no video.</summary>
     /// <param name="seasonOrder">Where the theme's season comes in the show; -1 for a theme of the whole show.</param>
-    public static OpeningEndingCard Theme(JellyfinClient client, OpEdTheme theme, BaseItem show, string? seasonName, int seasonOrder, Action<PlaybackQueueItem> play)
+    public static OpeningEndingCard Theme(JellyfinClient client, OpEdTheme theme, BaseItem show, string? seasonName, int seasonOrder, Action<OpeningEndingCard, ThemeCut?> play)
     {
         var series = show.DisplayTitle;
-        var entry = theme.PlayablePath is { } path
+        PlaybackQueueItem? EntryOf(OpEdTheme? version) => version?.PlayablePath is { } path
             ? new PlaybackQueueItem
             {
-                ItemId = theme.Id,
+                ItemId = version.Id,
                 MediaUrl = client.OpEdMediaUrl(path),
-                MediaTitle = theme.SongLine ?? theme.Code,
-                MediaSubtitle = $"{series} · {theme.Code}",
-                ThemeCard = ThemeInfo.From(theme, series, seasonName),
+                MediaTitle = (version.SongLine ?? version.Code) + (version.PlayedCut.Label is { } label ? $" ({label})" : ""),
+                MediaSubtitle = $"{series} · {version.Code}",
+                ThemeCard = ThemeInfo.From(version, series, seasonName),
             }
             : null;
         var badge = $"{(theme.IsOpening ? "OP" : "ED")} {theme.Sequence}" + (theme.Version > 1 ? $" v{theme.Version}" : "");
         var detail = string.Join(" · ", new[] { seasonName, theme.Episodes is { } episodes ? $"Episodes {episodes}" : null }.OfType<string>());
-        return new OpeningEndingCard(play, entry)
+        return new OpeningEndingCard(play,
+            cut => EntryOf(cut is { } wanted ? theme.WithCut(wanted) : theme.Preferring(Aster.Core.AppSettings.Current.ThemeCut)), theme)
         {
             IsOpening = theme.IsOpening,
             SeasonId = theme.SeasonId,
@@ -133,14 +191,17 @@ public partial class OpeningEndingCard : ObservableObject
     /// state left alone. With <paramref name="song"/> (AnimeThemes' theme for
     /// it), the card and its song card name the song and who performs it.
     /// </summary>
-    public static OpeningEndingCard Clip(IMediaServer client, ThemeClip clip, string series, Action<PlaybackQueueItem> play, KnownTheme? song = null) =>
-        new(play, new PlaybackQueueItem
+    public static OpeningEndingCard Clip(IMediaServer client, ThemeClip clip, string series, Action<OpeningEndingCard, ThemeCut?> play, KnownTheme? song = null)
+    {
+        var entry = new PlaybackQueueItem
         {
             ItemId = clip.Episode.Id,
             StartTicks = clip.StartTicks,
             ClipEndTicks = clip.EndTicks,
             ThemeCard = song is null ? ThemeInfo.From(clip, series) : ThemeInfo.From(song, series, clip.Episode.SeasonName),
-        })
+        };
+        // A clip has one version: its stretch of the episode.
+        return new(play, _ => entry)
         {
             IsOpening = clip.Kind == ThemeKind.Opening,
             SeasonNumber = clip.Season,
@@ -152,4 +213,5 @@ public partial class OpeningEndingCard : ObservableObject
                 ? client.ChapterImageUrl(clip.Episode.Id, clip.ChapterIndex, tag)
                 : client.LandscapeUrl(clip.Episode),
         };
+    }
 }
