@@ -12,18 +12,16 @@ step when either changes.
 ## Screenshots
 
 Taken on Windows 11, full screen at 1920×1080, from a demo Jellyfin server
-of open-licensed films, shows, music and audiobooks.
+of open-licensed films, shows and music.
 
 | | |
 | --- | --- |
-| ![Home](docs/screenshots/home.jpg) | ![Title page](docs/screenshots/detail.jpg) |
-| **Home**: featured banner, Continue Watching, Up Next, recently added | **Title page**: full-bleed art, episodes, related titles and details |
-| ![Player](docs/screenshots/player.jpg) | ![Disc menu](docs/screenshots/disc-menu.jpg) |
-| **Player**: mpv plays the original file, with every audio and subtitle track | **Disc menus**: JellyDisc menus with transitions and sounds |
+| ![Home](docs/screenshots/home.jpg) | ![Player](docs/screenshots/player.jpg) |
+| **Home**: featured banner, Continue Watching, Up Next, recently added | **Player**: mpv plays the original file, with every audio and subtitle track |
 | ![Channels](docs/screenshots/channels.jpg) | ![Channel row](docs/screenshots/channel-row.jpg) |
 | **Channels (Beta)**: playlists as TV channels, in one guide | **Channel row**: flick through channels while watching, or Go to Movie |
-| ![Music](docs/screenshots/music.jpg) | ![Audiobooks](docs/screenshots/audiobooks.jpg) |
-| **Music**: Now Playing, with what's up next | **Audiobooks**: books with their chapters, at any speed |
+| ![Disc menu](docs/screenshots/disc-menu.jpg) | ![Music](docs/screenshots/music.jpg) |
+| **Disc menus**: JellyDisc menus with transitions and sounds | **Music**: Now Playing, with what's up next |
 
 | Project | What it is |
 | --- | --- |
