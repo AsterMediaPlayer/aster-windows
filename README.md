@@ -65,7 +65,8 @@ OpenGL from a graphics driver for video. What differs from Windows:
 These leave the saved session alone:
 
 - `ASTER_SERVER`, `ASTER_TOKEN` (an API key or access token) and
-  `ASTER_USER_ID` sign in for that run.
+  `ASTER_USER_ID` sign in for that run; `ASTER_SERVER_KIND=emby` or `plex`
+  for an Emby or Plex server (with a Plex token, and any user id).
 - `--open <itemId>` opens a title's (or library's, or person's) page.
 - `--tab <search|movies|shows|anime|music|audiobooks|upcoming|livetv|channels|library|settings>` starts on a tab; `--sort <Name|DateAdded|ReleaseDate|Rating>` sorts it, and on Live TV `--section <on-now|guide|channels|recordings>` picks its section.
 - Signing out of such a session only ends it; the saved sign-in is left alone.
@@ -404,6 +405,25 @@ fast-forward and rewind skip a book 30 seconds ahead and 15 back. A video
 isn't shown there; the player has its own keys.
 
 Not yet: Add to Playlist, downloads, and the sleep timer.
+
+## Plex (in progress)
+
+Plex is being ported from the Apple app in steps. Every screen asks the
+server through `IMediaServer`, so a Plex server's titles show on the same
+pages as Jellyfin's: `Aster.Core/Plex` has Plex's replies (`PlexModels`),
+their conversion into the app's titles (`PlexMapper`, times in ticks and
+pictures by Plex's own paths through its photo transcoder) and the client.
+
+So far, browsing: Home (Continue Watching, On Deck as Up Next, the newest
+films and shows), Movies, TV Shows and Anime (libraries matched by Shoko,
+HAMA or AniDB), a library's grid sorted as chosen, a title's page with its
+seasons, episodes, related titles and extras, search, and marking watched.
+Plex keeps no favourites, so they're hidden; its music, Live TV and the
+Jellyfin plugins' pages aren't offered.
+
+Still to come: signing in with a Plex account (plex.tv/link, the account's
+servers and Home profiles), playing, and locking with the Home PIN. Until
+then a debug build signs in with a token (`ASTER_SERVER_KIND=plex`).
 
 ## Differences from the Apple app
 

@@ -133,7 +133,7 @@
                         <MenuItem Header="Go to Season" Command="{Binding GoToSeasonCommand}" IsVisible="{Binding CanGoToSeason}" />
                         <Separator IsVisible="{Binding HasMenu}" />
                         <MenuItem Header="{Binding WatchedLabel}" Command="{Binding ToggleWatchedCommand}" IsVisible="{Binding HasMenu}" />
-                        <MenuItem Header="{Binding FavoriteLabel}" Command="{Binding ToggleFavoriteCommand}" IsVisible="{Binding HasMenu}" />
+                        <MenuItem Header="{Binding FavoriteLabel}" Command="{Binding ToggleFavoriteCommand}" IsVisible="{Binding CanFavorite}" />
                     </ContextMenu>
                 </Button.ContextMenu>
                 <Panel>
@@ -316,7 +316,7 @@
                         <MenuItem Header="Go to Season" Command="{Binding GoToSeasonCommand}" IsVisible="{Binding CanGoToSeason}" />
                         <Separator IsVisible="{Binding HasMenu}" />
                         <MenuItem Header="{Binding WatchedLabel}" Command="{Binding ToggleWatchedCommand}" IsVisible="{Binding HasMenu}" />
-                        <MenuItem Header="{Binding FavoriteLabel}" Command="{Binding ToggleFavoriteCommand}" IsVisible="{Binding HasMenu}" />
+                        <MenuItem Header="{Binding FavoriteLabel}" Command="{Binding ToggleFavoriteCommand}" IsVisible="{Binding CanFavorite}" />
                     </ContextMenu>
                 </Button.ContextMenu>
                 <Panel>

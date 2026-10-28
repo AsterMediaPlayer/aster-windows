@@ -40,6 +40,10 @@ public sealed class JellyfinException : Exception
         return new(JellyfinErrorKind.Http, text, code, message);
     }
 
+    /// <summary>A failure another kind of server (Plex) explains in its own words.</summary>
+    public static JellyfinException Explained(int? code, string message) =>
+        new(JellyfinErrorKind.Http, message, code);
+
     public static JellyfinException NotSignedIn() =>
         new(JellyfinErrorKind.NotSignedIn, "You are not signed in.");
 

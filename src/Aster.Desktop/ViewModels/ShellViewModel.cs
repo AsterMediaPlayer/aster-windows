@@ -251,8 +251,9 @@ public partial class ShellViewModel : ViewModelBase, INavigator, IDisposable
     {
         var hasAnime = Anime.IsCompletedSuccessfully && Anime.Result.HasAnime;
         var libraries = Libraries.IsCompletedSuccessfully ? Libraries.Result : [];
-        var hasMusic = libraries.Any(l => l.CollectionType == "music");
-        var hasBooks = libraries.Any(l => l.CollectionType == "books");
+        // Only where the server's music and books are Aster's to play (not Plex's, yet).
+        var hasMusic = Client.Can(ServerCapabilities.Music) && libraries.Any(l => l.CollectionType == "music");
+        var hasBooks = Client.Can(ServerCapabilities.Audiobooks) && libraries.Any(l => l.CollectionType == "books");
         var all = new (AppTab Tab, string Title, string Glyph)[]
         {
             (AppTab.Home, "Home", ""),
@@ -276,7 +277,7 @@ public partial class ShellViewModel : ViewModelBase, INavigator, IDisposable
                 AppTab.Music => hasMusic,
                 AppTab.Audiobooks => hasBooks,
                 AppTab.Upcoming => HasUpcoming.IsCompletedSuccessfully && HasUpcoming.Result,
-                AppTab.LiveTV => libraries.Any(l => l.CollectionType == "livetv"),
+                AppTab.LiveTV => Client.Can(ServerCapabilities.LiveTV) && libraries.Any(l => l.CollectionType == "livetv"),
                 AppTab.Channels => HasChannels.IsCompletedSuccessfully && HasChannels.Result,
                 _ => true,
             })

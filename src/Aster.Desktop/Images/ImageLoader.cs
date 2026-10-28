@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
 using Aster.Core.Jellyfin;
+using Aster.Core.Server;
 using Avalonia.Media.Imaging;
 
 namespace Aster.Desktop.Images;
@@ -17,7 +18,7 @@ namespace Aster.Desktop.Images;
 public static class ImageLoader
 {
     /// <summary>The signed-in server, set at sign-in.</summary>
-    public static JellyfinClient? Client { get; set; }
+    public static IMediaServer? Client { get; set; }
 
     private const int Capacity = 400;
     private static readonly Dictionary<Uri, LinkedListNode<(Uri Url, Bitmap Bitmap)>> cache = [];

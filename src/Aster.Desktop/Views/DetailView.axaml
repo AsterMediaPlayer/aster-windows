@@ -156,7 +156,7 @@
                                     <TextBlock Text="Disc Menu" />
                                 </StackPanel>
                             </Button>
-                            <Button Theme="{StaticResource PillButton}" Command="{Binding ToggleFavoriteCommand}" ToolTip.Tip="Favorite" Width="44" Padding="0">
+                            <Button Theme="{StaticResource PillButton}" Command="{Binding ToggleFavoriteCommand}" ToolTip.Tip="Favorite" Width="44" Padding="0" IsVisible="{Binding CanFavorite}">
                                 <Panel>
                                     <TextBlock Text="&#xEB51;" FontFamily="{StaticResource IconFont}" IsVisible="{Binding IsFavorite}" HorizontalAlignment="Center" />
                                     <TextBlock Text="&#xEB52;" FontFamily="{StaticResource IconFont}" IsVisible="{Binding !IsFavorite}" HorizontalAlignment="Center" />

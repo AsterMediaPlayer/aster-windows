@@ -51,6 +51,7 @@ public enum ServerKind
 {
     Jellyfin,
     Emby,
+    Plex,
 }
 
 /// <summary>An id as text (Jellyfin) or a number (Emby's studios, genres and people), as text either way.</summary>

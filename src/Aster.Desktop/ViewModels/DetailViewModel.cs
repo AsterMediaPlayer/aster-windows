@@ -183,6 +183,9 @@ public partial class DetailViewModel : ViewModelBase, IRefreshable
     public bool IsFavorite => Item.UserData?.IsFavorite == true;
     public bool IsPlayed => Item.UserData?.Played == true;
     public bool ShowsWatched => Item.Kind is not (ItemKind.Series or ItemKind.Season);
+
+    /// <summary>Where the server keeps favourites (Plex doesn't).</summary>
+    public bool CanFavorite => Client.Can(ServerCapabilities.Favorites);
     public string? Remaining => Item.Kind == ItemKind.Series ? null : Item.RemainingText;
     public bool CanGoToSeries => Item.Kind is ItemKind.Episode or ItemKind.Season && Item.SeriesId is not null;
 

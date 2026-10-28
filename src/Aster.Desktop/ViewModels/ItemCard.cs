@@ -111,6 +111,9 @@ public partial class ItemCard : ObservableObject, ICard
     public bool HasMenu => Item.Kind is ItemKind.Movie or ItemKind.Series or ItemKind.Season or ItemKind.Episode
         or ItemKind.Video or ItemKind.MusicVideo or ItemKind.Recording;
 
+    /// <summary>The menu's favourite, where the server keeps favourites (Plex doesn't).</summary>
+    public bool CanFavorite => HasMenu && navigator.Client.Can(ServerCapabilities.Favorites);
+
     private bool PlaysItself => Item.Kind is not (ItemKind.Series or ItemKind.Season);
     private long ResumeTicks => Item.UserData?.PlaybackPositionTicks ?? 0;
 

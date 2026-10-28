@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Aster.Core.Jellyfin;
 using Aster.Core.Playback;
+using Aster.Core.Server;
 using Aster.Desktop.Images;
 using CommunityToolkit.Mvvm.ComponentModel;
 
@@ -54,7 +55,7 @@ public partial class MainViewModel : ViewModelBase, IServerAccounts
         Servers = SavedServers.LoadOrStart(stored);
         if ((development ?? stored) is { } session)
         {
-            var client = new JellyfinClient(session.ServerUrl, session.AccessToken, session.UserId, kind: session.Kind);
+            var client = MediaServers.For(session);
             ShowShell(client, session);
             if (tab is { } startTab) shell!.ShowTab(startTab);
             if (sort is { } startSort && shell!.CurrentPage is BrowsePageViewModel page) page.SortIndex = (int)startSort;
@@ -73,7 +74,8 @@ public partial class MainViewModel : ViewModelBase, IServerAccounts
     /// <summary>
     /// In a debug build, ASTER_SERVER, ASTER_TOKEN and ASTER_USER_ID sign in
     /// without touching the saved session, for trying the app against a
-    /// server with an API key; ASTER_SERVER_KIND=emby for an Emby server.
+    /// server with an API key; ASTER_SERVER_KIND=emby or plex for an Emby or
+    /// Plex server (with a Plex token, and any user id).
     /// </summary>
     private static StoredSession? DevelopmentSession()
     {
@@ -110,14 +112,15 @@ public partial class MainViewModel : ViewModelBase, IServerAccounts
         ShowShell(client, session);
     }
 
-    private void ShowShell(JellyfinClient client, StoredSession session)
+    private void ShowShell(IMediaServer client, StoredSession session)
     {
         // Another server's: what the last one was showing and playing goes.
         shell?.Dispose();
         ImageLoader.Client = client;
         CurrentId = developmentSession ? null : SavedServer.IdOf(session.ServerUrl, session.UserId);
         shell = new ShellViewModel(client, session, (entry, closed) => Play(client, entry, closed),
-            (document, itemId, closed) => ShowDiscMenu(client, document, itemId, closed), kind => SignOutAsync(client, kind), this);
+            // Disc menus come from Aster's Jellyfin plugin.
+            (document, itemId, closed) => ShowDiscMenu((JellyfinClient)client, document, itemId, closed), kind => SignOutAsync(client, kind), this);
         CurrentPage = shell;
     }
 
@@ -151,7 +154,7 @@ public partial class MainViewModel : ViewModelBase, IServerAccounts
         developmentSession = false;
         Servers = SavedServers.Remember(Servers, session);
         SavedServers.Save(Servers);
-        ShowShell(new JellyfinClient(session.ServerUrl, session.AccessToken, session.UserId, kind: session.Kind), session);
+        ShowShell(MediaServers.For(session), session);
     }
 
     public void Remove(string id)
@@ -160,7 +163,7 @@ public partial class MainViewModel : ViewModelBase, IServerAccounts
         Servers = SavedServers.Forget(Servers, id);
         SavedServers.Save(Servers);
         var session = server.Session;
-        _ = new JellyfinClient(session.ServerUrl, session.AccessToken, session.UserId, kind: session.Kind).LogoutAsync()
+        _ = MediaServers.For(session).LogoutAsync()
             .ContinueWith(_ => { }, TaskScheduler.Default);
     }
 
@@ -212,8 +215,14 @@ public partial class MainViewModel : ViewModelBase, IServerAccounts
     }
 
     /// <summary>Plays over everything; closing comes back to the page it was played from.</summary>
-    private void Play(JellyfinClient client, PlaybackQueueItem entry, Action<BaseItem?>? closed)
+    private void Play(IMediaServer server, PlaybackQueueItem entry, Action<BaseItem?>? closed)
     {
+        // The player is Jellyfin's (and Emby's) until it plays from Plex too.
+        if (server is not JellyfinClient client)
+        {
+            System.Diagnostics.Debug.WriteLine($"Playback: {server.Kind} playback comes later");
+            return;
+        }
         CurrentPage = new PlayerViewModel(client, entry, last =>
         {
             CurrentPage = shell;
@@ -246,7 +255,7 @@ public partial class MainViewModel : ViewModelBase, IServerAccounts
     }
 
     /// <summary>Opens a page for <c>--open</c>: looked up first, so a library or person opens as one would from a card.</summary>
-    private async Task OpenByIdAsync(JellyfinClient client, string itemId)
+    private async Task OpenByIdAsync(IMediaServer client, string itemId)
     {
         try { shell?.Open(await client.ItemAsync(itemId)); }
         catch (Exception error) when (error is JellyfinException or System.Net.Http.HttpRequestException) { }
@@ -257,20 +266,20 @@ public partial class MainViewModel : ViewModelBase, IServerAccounts
     /// for <c>--play</c>: a song or album in the music player, a book in the
     /// book player, anything else in the video player.
     /// </summary>
-    private async Task PlayByIdAsync(JellyfinClient client, string itemId, int? maxBitrate, double? startSeconds)
+    private async Task PlayByIdAsync(IMediaServer client, string itemId, int? maxBitrate, double? startSeconds)
     {
         try
         {
             var item = await client.ItemAsync(itemId);
-            if (shell is { } open && item.Kind is ItemKind.Audio or ItemKind.MusicAlbum)
+            if (shell is { } open && client is JellyfinClient music && item.Kind is ItemKind.Audio or ItemKind.MusicAlbum)
             {
-                var tracks = item.Kind == ItemKind.Audio ? [item] : await client.AlbumTracksAsync(item.Id);
-                open.Audio.Music.Play(tracks, 0, shuffled: false, client);
+                var tracks = item.Kind == ItemKind.Audio ? [item] : await music.AlbumTracksAsync(item.Id);
+                open.Audio.Music.Play(tracks, 0, shuffled: false, music);
                 return;
             }
-            if (shell is { } books && item.Kind == ItemKind.AudioBook)
+            if (shell is { } books && client is JellyfinClient library && item.Kind == ItemKind.AudioBook)
             {
-                books.Audio.Books.Play(Aster.Core.Audio.Audiobook.FromItem(item), null, client);
+                books.Audio.Books.Play(Aster.Core.Audio.Audiobook.FromItem(item), null, library);
                 return;
             }
             var start = startSeconds is { } seconds ? (long)(seconds * 10_000_000) : item.UserData?.PlaybackPositionTicks ?? 0;
@@ -284,7 +293,7 @@ public partial class MainViewModel : ViewModelBase, IServerAccounts
     /// in, to switch back to; signing out (or a session the server ended)
     /// forgets it, and the others stay saved.
     /// </summary>
-    private async Task SignOutAsync(JellyfinClient client, SignOutKind kind)
+    private async Task SignOutAsync(IMediaServer client, SignOutKind kind)
     {
         var address = kind == SignOutKind.AddServer ? null : client.BaseUrl.ToString().TrimEnd('/');
         if (developmentSession)
