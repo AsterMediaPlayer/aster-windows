@@ -171,6 +171,17 @@ public sealed record ThemeInfo(string Kicker, string Title, string? Artists = nu
             parts.Count == 0 ? null : string.Join(" · ", parts));
     }
 
+    /// <summary>
+    /// The AnimeThemes theme a clip is, when one's known: of the same kind,
+    /// playing in the clip's episode, and of those the one in the fewest
+    /// episodes (a season's own over one listed for the whole show), as the
+    /// player matches a song card.
+    /// </summary>
+    public static KnownTheme? Match(ThemeClip clip, IReadOnlyList<KnownTheme> known) =>
+        known.Where(t => t.IsOpening == (clip.Kind == ThemeKind.Opening) && t.PlaysInEpisode(clip.Episode.IndexNumber))
+            .OrderBy(t => t.EpisodeCount)
+            .FirstOrDefault();
+
     /// <summary>A clip found from chapters alone: which theme it is, and the show.</summary>
     public static ThemeInfo From(ThemeClip clip, string series)
     {

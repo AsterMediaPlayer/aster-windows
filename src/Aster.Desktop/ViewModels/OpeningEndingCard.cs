@@ -114,19 +114,24 @@ public partial class OpeningEndingCard : ObservableObject
         };
     }
 
-    /// <summary>A clip of its episode: just that stretch, its resume point and watched state left alone.</summary>
-    public static OpeningEndingCard Clip(IMediaServer client, ThemeClip clip, string series, Action<PlaybackQueueItem> play) =>
+    /// <summary>
+    /// A clip of its episode: just that stretch, its resume point and watched
+    /// state left alone. With <paramref name="song"/> (AnimeThemes' theme for
+    /// it), the card and its song card name the song and who performs it.
+    /// </summary>
+    public static OpeningEndingCard Clip(IMediaServer client, ThemeClip clip, string series, Action<PlaybackQueueItem> play, KnownTheme? song = null) =>
         new(play, new PlaybackQueueItem
         {
             ItemId = clip.Episode.Id,
             StartTicks = clip.StartTicks,
             ClipEndTicks = clip.EndTicks,
-            ThemeCard = ThemeInfo.From(clip, series),
+            ThemeCard = song is null ? ThemeInfo.From(clip, series) : ThemeInfo.From(song, series, clip.Episode.SeasonName),
         })
         {
             IsOpening = clip.Kind == ThemeKind.Opening,
             Length = $"{clip.Duration / 60}:{clip.Duration % 60:00}",
-            Title = clip.Title,
+            Title = song?.SongTitle ?? clip.Title,
+            Artists = song is { Artists.Count: > 0 } ? string.Join(", ", song.Artists) : null,
             Detail = clip.Episode.EpisodeCode is { } code ? $"From {code}" : clip.Episode.DisplayTitle,
             Image = clip.ChapterImageTag is { } tag
                 ? client.ChapterImageUrl(clip.Episode.Id, clip.ChapterIndex, tag)

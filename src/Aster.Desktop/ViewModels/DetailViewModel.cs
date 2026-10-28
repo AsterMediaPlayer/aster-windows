@@ -428,7 +428,14 @@ public partial class DetailViewModel : ViewModelBase, IRefreshable
         catch (Exception error) when (IsServerError(error)) { return []; }
         var clips = OpeningsEndings.Find(withChapters);
         openingClips = clips.Where(c => c.Kind == ThemeKind.Opening).ToList();
-        return clips.Select(clip => OpeningEndingCard.Clip(Client, clip, show.DisplayTitle, PlayTheme)).ToList();
+        // The songs, from AnimeThemes, asked once a season (as it lists each season apart).
+        var seasons = await Task.WhenAll(clips.GroupBy(c => c.Season).Select(async season =>
+        {
+            try { return (season.Key, Known: await AnimeThemesLookup.ForEpisodeAsync(season.First().Episode, Client)); }
+            catch (Exception error) when (IsServerError(error)) { return (season.Key, Known: (IReadOnlyList<KnownTheme>)[]); }
+        }));
+        var known = seasons.ToDictionary(s => s.Key, s => s.Known);
+        return clips.Select(clip => OpeningEndingCard.Clip(Client, clip, show.DisplayTitle, PlayTheme, ThemeInfo.Match(clip, known[clip.Season]))).ToList();
     }
 
     /// <summary>An opening or ending, full screen; the page needn't follow, since nothing it shows changes.</summary>

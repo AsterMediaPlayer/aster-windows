@@ -104,4 +104,30 @@ public class AnimeThemesTests
         };
         Assert.Equal("Bad Girl", Assert.Single(ThemeMoments.ForEpisode(episode, [], [])).Info.Title);
     }
+
+    /// <summary>
+    /// A Music tab clip gets its song: Beastars on AnimeThemes has one opening
+    /// for the whole season and endings that take turns by episode.
+    /// </summary>
+    [Fact]
+    public void AClipGetsTheSongOfItsEpisode()
+    {
+        KnownTheme[] known =
+        [
+            new(true, 1, "Wild Side", ["ALI"], null),
+            new(false, 1, "Le zoo", ["YOASOBI"], "2, 5, 8-9"),
+            new(false, 2, "Nemureru Honoo", [], "3, 7, 10"),
+        ];
+        ThemeClip Clip(ThemeKind kind, int episode) => new()
+        {
+            Kind = kind,
+            Season = 1,
+            Episode = new BaseItem { Id = $"e{episode}", Type = "Episode", IndexNumber = episode },
+        };
+        Assert.Equal("Wild Side", ThemeInfo.Match(Clip(ThemeKind.Opening, 4), known)?.SongTitle);
+        Assert.Equal("Le zoo", ThemeInfo.Match(Clip(ThemeKind.Ending, 2), known)?.SongTitle);
+        Assert.Equal("Nemureru Honoo", ThemeInfo.Match(Clip(ThemeKind.Ending, 3), known)?.SongTitle);
+        // An ending AnimeThemes doesn't place in that episode: no song, rather than a wrong one.
+        Assert.Null(ThemeInfo.Match(Clip(ThemeKind.Ending, 1), known));
+    }
 }
