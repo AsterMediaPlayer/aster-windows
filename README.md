@@ -128,6 +128,8 @@ These leave the saved session alone:
 - `--paused` (with `--play`) pauses once it starts, for the pause screen.
 - `--mini <channelId>` (with `--tab livetv`) tunes that channel straight
   into the Live TV header's mini player.
+- `--edit-channels [playlistId]` opens Edit Channels, or one channel's
+  settings alone.
 - `ASTER_GAMEPAD_SCRIPT="10:down,12:a,14:b"` attaches a pretend game
   controller and presses its buttons that many seconds after starting (a,
   b, x, y, start, lb, rb, up, down, left, right; `hold-down` holds one a
@@ -365,9 +367,18 @@ of its lowest number, the rest under Other, and the guide has the same
 filter and group names as Live TV's; flicking runs on from one group into
 the next, the row showing the picked channel's group.
 
-Not yet: Edit Channels (an administrator's page for making channels and
-setting their tags; the Apple app or Jellyfin's own Edit Metadata ▸ Tags
-does it meanwhile).
+**Edit Channels** (`EditChannelsViewModel`), from the Channels tab or
+Settings ▸ Channels (Beta), as the Apple app's: an administrator makes a
+channel from a show (a public playlist of its episodes), a genre, a network,
+a collection or one of their playlists, and opens a channel to set its
+name, group, number, what it plays (genres, networks, collections, content,
+libraries, years, ratings), mode, logo, corner logo and breaks, with the
+rest (episodes in a row, reshuffle, Shuffle Again, lengths, the corner
+logo's place and look, filler types, bumpers, commercial time, promos,
+trailers, interstitials, line-up and fit, break spacing, users) under
+Advanced. Each change writes the playlist's tags at once, keeping its other
+tags, and is put back if the server refuses; How Channels Work lists every
+tag. Others see that only an administrator can set channels up.
 
 ## Settings
 
@@ -394,8 +405,7 @@ About pages on one page, as the Mac's Settings window has them:
   can ask for the user's password first, locks it after time away (5
   minutes to 4 hours, the window in the background, minimized or closed,
   but not while a video plays), checked by the server, and forgets it.
-
-Not yet: the Channels page, which waits on that feature.
+- **Channels (Beta)** opens Edit Channels (see Channels).
 
 ## The player
 

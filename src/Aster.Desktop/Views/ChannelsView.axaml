@@ -5,7 +5,15 @@
              x:DataType="vm:ChannelsViewModel">
 
     <DockPanel>
-        <TextBlock DockPanel.Dock="Top" Text="Channels (Beta)" FontSize="32" FontWeight="Bold" Margin="48,76,48,16" />
+        <DockPanel DockPanel.Dock="Top" Margin="48,76,48,16">
+            <Button DockPanel.Dock="Right" Theme="{StaticResource PillButton}" Command="{Binding EditChannelsCommand}" VerticalAlignment="Center">
+                <StackPanel Orientation="Horizontal" Spacing="10">
+                    <TextBlock Text="&#xE713;" FontFamily="{StaticResource IconFont}" VerticalAlignment="Center" />
+                    <TextBlock Text="Edit Channels" />
+                </StackPanel>
+            </Button>
+            <TextBlock Text="Channels (Beta)" FontSize="32" FontWeight="Bold" />
+        </DockPanel>
         <ContentControl Content="{Binding Guide}" />
     </DockPanel>
 </UserControl>

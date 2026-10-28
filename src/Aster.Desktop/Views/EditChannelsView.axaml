@@ -1,0 +1,104 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Aster.Desktop.ViewModels"
+             xmlns:c="using:Aster.Desktop.Controls"
+             x:Class="Aster.Desktop.Views.EditChannelsView"
+             x:DataType="vm:EditChannelsViewModel"
+             Background="#141414">
+
+    <UserControl.Styles>
+        <StyleInclude Source="avares://Aster.Desktop/Views/SettingsStyles.axaml" />
+        <Style Selector="TextBlock.detail">
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="Foreground" Value="#99FFFFFF" />
+            <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+        </Style>
+        <Style Selector="Button.row:pointerover TextBlock.detail, Button.row:focus-visible TextBlock.detail">
+            <Setter Property="Foreground" Value="#8C000000" />
+        </Style>
+        <Style Selector="TextBlock.glyph">
+            <Setter Property="DockPanel.Dock" Value="Right" />
+            <Setter Property="FontFamily" Value="{StaticResource IconFont}" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="Foreground" Value="#99FFFFFF" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Margin" Value="16,0,0,0" />
+        </Style>
+        <Style Selector="Button.row:pointerover TextBlock.glyph, Button.row:focus-visible TextBlock.glyph">
+            <Setter Property="Foreground" Value="#8C000000" />
+        </Style>
+    </UserControl.Styles>
+
+    <UserControl.DataTemplates>
+        <DataTemplate DataType="vm:EditSectionRow">
+            <TextBlock Classes="section" Text="{Binding Title}" />
+        </DataTemplate>
+        <DataTemplate DataType="vm:EditNoteRow">
+            <Border Classes="note">
+                <TextBlock Text="{Binding Text}" />
+            </Border>
+        </DataTemplate>
+        <DataTemplate DataType="vm:EditActionRow">
+            <Button Classes="row" Command="{Binding Command}">
+                <DockPanel>
+                    <TextBlock Classes="glyph" Text="{Binding Chevron}" />
+                    <TextBlock Classes="value" Text="{Binding Value}" MaxWidth="420" />
+                    <StackPanel VerticalAlignment="Center" Spacing="2">
+                        <TextBlock Text="{Binding Title}" TextTrimming="CharacterEllipsis" />
+                        <TextBlock Classes="detail" Text="{Binding Detail}" IsVisible="{Binding HasDetail}" />
+                    </StackPanel>
+                </DockPanel>
+            </Button>
+        </DataTemplate>
+        <DataTemplate DataType="vm:EditChoiceRow">
+            <Button Classes="row" AutomationProperties.Name="{Binding Title}">
+                <DockPanel>
+                    <TextBlock Classes="chevron" />
+                    <TextBlock Classes="value" Text="{Binding Value}" MaxWidth="420" />
+                    <TextBlock Text="{Binding Title}" VerticalAlignment="Center" />
+                </DockPanel>
+                <Button.Flyout>
+                    <MenuFlyout Placement="BottomEdgeAlignedRight" ItemsSource="{Binding Choices}" ItemContainerTheme="{StaticResource SettingChoice}" />
+                </Button.Flyout>
+            </Button>
+        </DataTemplate>
+        <DataTemplate DataType="vm:EditToggleRow">
+            <Button Classes="row" Command="{Binding Flip}">
+                <DockPanel>
+                    <TextBlock Classes="value" Text="{Binding IsOn, Converter={x:Static c:Converters.OnOff}}" />
+                    <StackPanel VerticalAlignment="Center" Spacing="2">
+                        <TextBlock Text="{Binding Title}" TextTrimming="CharacterEllipsis" />
+                        <TextBlock Classes="detail" Text="{Binding Detail}" IsVisible="{Binding HasDetail}" />
+                    </StackPanel>
+                </DockPanel>
+            </Button>
+        </DataTemplate>
+        <DataTemplate DataType="vm:EditTextRow">
+            <Border Classes="fact">
+                <DockPanel>
+                    <TextBlock Text="{Binding Title}" Width="200" />
+                    <TextBox Text="{Binding Text}" PlaceholderText="{Binding Placeholder}" Background="Transparent" BorderThickness="0" FontSize="17"
+                             KeyDown="TextKeyDown" LostFocus="TextLostFocus" />
+                </DockPanel>
+            </Border>
+        </DataTemplate>
+    </UserControl.DataTemplates>
+
+    <Panel>
+        <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+            <StackPanel Margin="48,76,48,60">
+                <TextBlock Classes="pageTitle" Text="{Binding Title}" />
+                <Border Classes="note" IsVisible="{Binding Message, Converter={x:Static ObjectConverters.IsNotNull}}">
+                    <TextBlock Text="{Binding Message}" Foreground="#FF8A80" />
+                </Border>
+                <ItemsControl ItemsSource="{Binding Rows}" />
+            </StackPanel>
+        </ScrollViewer>
+
+        <Button Command="{Binding BackCommand}" ToolTip.Tip="Back (Alt+←)" AutomationProperties.Name="Back" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="20"
+                Width="40" Height="40" CornerRadius="20" Padding="0" Background="#80000000"
+                HorizontalContentAlignment="Center" VerticalContentAlignment="Center">
+            <TextBlock Text="&#xE72B;" FontFamily="{StaticResource IconFont}" />
+        </Button>
+    </Panel>
+</UserControl>

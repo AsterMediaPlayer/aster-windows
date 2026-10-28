@@ -21,6 +21,9 @@ public sealed partial class ChannelsViewModel : ViewModelBase, IGuideSource, IRe
     private const int Days = 7;
 
     private readonly INavigator navigator;
+
+    /// <summary>Edit Channels: make channels and set them up (an administrator's; others see why not).</summary>
+    [CommunityToolkit.Mvvm.Input.RelayCommand] private void EditChannels() => navigator.Push(new EditChannelsViewModel(navigator));
     private readonly ChannelLoader loader = new();
     private IReadOnlyList<PlaylistChannel> channels = [];
     private ChannelGrouping? grouping;
