@@ -225,13 +225,7 @@ public partial class MainViewModel : ViewModelBase, IServerAccounts
     /// <summary>Plays over everything; closing comes back to the page it was played from.</summary>
     private void Play(IMediaServer server, PlaybackQueueItem entry, Action<BaseItem?>? closed)
     {
-        // The player is Jellyfin's (and Emby's) until it plays from Plex too.
-        if (server is not JellyfinClient client)
-        {
-            System.Diagnostics.Debug.WriteLine($"Playback: {server.Kind} playback comes later");
-            return;
-        }
-        CurrentPage = new PlayerViewModel(client, entry, last =>
+        CurrentPage = new PlayerViewModel(server, entry, last =>
         {
             CurrentPage = shell;
             closed?.Invoke(last);
@@ -333,6 +327,7 @@ public partial class MainViewModel : ViewModelBase, IServerAccounts
         {
             player.SaveProgressNow();
             player.Stop();
+            player.FinishReporting(TimeSpan.FromSeconds(2));
         }
         // A disc menu, whether showing or waiting behind a title it's playing.
         openMenu?.Dispose();

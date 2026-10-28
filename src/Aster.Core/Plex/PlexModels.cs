@@ -124,6 +124,9 @@ public sealed record PlexStream
     public bool? Default { get; init; }
     public bool? Forced { get; init; }
 
+    /// <summary>The track Plex would play for this account: its language settings, or what was last chosen for the title.</summary>
+    public bool? Selected { get; init; }
+
     /// <summary>Set for a subtitle file beside the video, which can be fetched.</summary>
     public string? Key { get; init; }
 

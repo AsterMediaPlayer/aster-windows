@@ -2,15 +2,14 @@
 // Plex's answers are turned into the app's BaseItems. Every request carries
 // the server's token and this device's Plex identity as headers; addresses
 // handed to players carry the token in the query instead. A port of the
-// Apple app's PlexClient.swift: browsing, watched and pictures. Playing
-// comes with the player (PlexClient+Playback.swift in the Apple app).
+// Apple app's PlexClient.swift: browsing, watched and pictures. Playing is
+// in PlexClient.Playback.cs.
 
 using System.Globalization;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Text.Json;
 using Aster.Core.Jellyfin;
-using Aster.Core.Playback;
 using Aster.Core.Server;
 
 namespace Aster.Core.Plex;
@@ -64,7 +63,7 @@ public static class PlexDevice
     }
 }
 
-public sealed class PlexClient : IMediaServer
+public sealed partial class PlexClient : IMediaServer
 {
     private static readonly HttpClient SharedHttp = new(new SocketsHttpHandler
     {
@@ -460,25 +459,4 @@ public sealed class PlexClient : IMediaServer
         }))).ConfigureAwait(false);
         return chunks.SelectMany(ids => ids).ToHashSet();
     }
-
-    // ---- Playing: with the player, for Plex (step 4 of the port) ----
-
-    public Task<PlaybackInfoResponse> PlaybackInfoAsync(string itemId, long startTicks, int maxBitrate, string? mediaSourceId = null, int? audioStreamIndex = null,
-        int? subtitleStreamIndex = null, bool allowDirect = true, bool mostCompatible = false, DeviceProfile? profile = null, CancellationToken ct = default) =>
-        throw JellyfinException.Explained(null, PlexErrors.NotBuilt);
-
-    public Uri DirectStreamUrl(string itemId, string mediaSourceId, string? playSessionId) => throw new NotSupportedException(PlexErrors.NotBuilt);
-    public Uri VideoStreamUrl(string itemId) => throw new NotSupportedException(PlexErrors.NotBuilt);
-    public Uri? AbsoluteUrl(string serverRelative) => Url(serverRelative.Split('?')[0]);
-    public Task ReportStartAsync(PlaybackReport report) => Task.CompletedTask;
-    public Task ReportProgressAsync(PlaybackReport report, ResumePoints.Saving saving = ResumePoints.Saving.WhenDue) => Task.CompletedTask;
-    public Task ReportStoppedAsync(PlaybackReport report) => Task.CompletedTask;
-    public Task SaveResumePositionAsync(string itemId, long ticks, CancellationToken ct = default) => Task.CompletedTask;
-    public Task StopTranscodingAsync(string playSessionId) => Task.CompletedTask;
-    public Task<IReadOnlyList<SubtitleCue>> SubtitleCuesAsync(string itemId, string mediaSourceId, int streamIndex, CancellationToken ct = default) => Task.FromResult<IReadOnlyList<SubtitleCue>>([]);
-    public Uri SubtitleFileUrl(string itemId, string mediaSourceId, int streamIndex, string format) => throw new NotSupportedException(PlexErrors.NotBuilt);
-    public Task<IReadOnlyList<MediaSegment>> MediaSegmentsAsync(string itemId, CancellationToken ct = default) => Task.FromResult<IReadOnlyList<MediaSegment>>([]);
-    public Uri TrickplayTileUrl(string itemId, int width, int index, string mediaSourceId) => throw new NotSupportedException(PlexErrors.NotBuilt);
-    public Uri ChapterImageUrl(string itemId, int index, long? stamp) => throw new NotSupportedException(PlexErrors.NotBuilt);
-    public Uri ChapterImageUrl(string itemId, int index, string tag) => throw new NotSupportedException(PlexErrors.NotBuilt);
 }

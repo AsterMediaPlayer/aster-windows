@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Aster.Core.Jellyfin;
 using Aster.Core.Playback;
+using Aster.Core.Server;
 using Avalonia;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
@@ -23,7 +24,7 @@ public sealed class ScrubPreviewSource
     public const int PreviewWidth = 320;
     private const int SheetsKept = 3;
 
-    private readonly JellyfinClient client;
+    private readonly IMediaServer client;
     private readonly string itemId;
     private readonly string mediaSourceId;
     private readonly TrickplayInfo info;
@@ -31,7 +32,7 @@ public sealed class ScrubPreviewSource
     /// <summary>Sheet numbers, the most recently used last.</summary>
     private readonly List<int> recent = [];
 
-    private ScrubPreviewSource(JellyfinClient client, string itemId, string mediaSourceId, TrickplayInfo info)
+    private ScrubPreviewSource(IMediaServer client, string itemId, string mediaSourceId, TrickplayInfo info)
     {
         this.client = client;
         this.itemId = itemId;
@@ -40,7 +41,7 @@ public sealed class ScrubPreviewSource
     }
 
     /// <summary>Null when the item has no trickplay images for this file.</summary>
-    public static ScrubPreviewSource? For(JellyfinClient client, BaseItem item, string? mediaSourceId)
+    public static ScrubPreviewSource? For(IMediaServer client, BaseItem item, string? mediaSourceId)
     {
         if (item.Trickplay is not { Count: > 0 } trickplay) return null;
         var sourceId = mediaSourceId is not null && trickplay.ContainsKey(mediaSourceId)

@@ -433,9 +433,25 @@ can change. Credential Manager keeps 2,560 bytes an entry, so a longer
 secret (a Plex sign-in is) goes in numbered parts. On Plex, Settings leaves
 out what Plex keeps itself (the preferred languages) or doesn't have.
 
-Still to come: playing, finding the server again when its saved address
-stops answering, and locking with the Home PIN (a Plex server's page offers
-no password or Lock After until then).
+Playing (`PlexClient.Playback.cs`): the player asks through `IMediaServer`
+as it does Jellyfin. A title plays from its file (Plex's part, with the
+token in the address), and mpv reads every track inside it, since Plex
+numbers them as the container does. Over the quality limit it plays from
+Plex's universal transcoder as HLS, after asking for Plex's decision with
+the same settings (Plex refuses a conversion without one); a subtitle file
+beside the video is loaded as a file, and any other subtitle is burned in.
+The tracks Plex marks selected (its account's language settings, or what
+was last chosen) are the defaults. Progress goes to Plex's timeline, which
+keeps the resume point and marks a finished title watched. Skips come from
+Plex Pass's intro and credits markers, else from chapters named as an
+opening or ending (no longer than four minutes: some files call their whole
+first half "Intro"). Closing the app waits a moment for the stop report,
+which otherwise went unsent (Jellyfin's too). Not yet on Plex: scrubbing
+previews, chapter pictures, and the Openings & Endings tab's clips.
+
+Still to come: finding the server again when its saved address stops
+answering, and locking with the Home PIN (a Plex server's page offers no
+password or Lock After until then).
 
 ## Differences from the Apple app
 

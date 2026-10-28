@@ -38,7 +38,7 @@ public sealed record ChapterChoice(string Title, string Time, bool IsCurrent, IR
 
 public partial class PlayerViewModel : ViewModelBase
 {
-    private readonly JellyfinClient client;
+    private readonly IMediaServer client;
     private readonly Action<BaseItem?> close;
     private readonly AppSettings settings = AppSettings.Current;
     private PlaybackQueueItem entry;
@@ -82,7 +82,7 @@ public partial class PlayerViewModel : ViewModelBase
     private readonly DispatcherTimer toastTimer = new() { Interval = TimeSpan.FromSeconds(1.5) };
 
     /// <param name="close">Called as the player closes, with the last title it played.</param>
-    public PlayerViewModel(JellyfinClient client, PlaybackQueueItem entry, Action<BaseItem?> close)
+    public PlayerViewModel(IMediaServer client, PlaybackQueueItem entry, Action<BaseItem?> close)
     {
         this.client = client;
         this.entry = entry;
@@ -222,7 +222,7 @@ public partial class PlayerViewModel : ViewModelBase
     /// <summary>Opens the row on the channel playing; false when this isn't a channel.</summary>
     public bool OpenFlick()
     {
-        if (stopped || ChannelFlickViewModel.For(client, IsLive ? entry.ItemId : null, entry.ChannelId) is not { } flick) return false;
+        if (stopped || client is not JellyfinClient jellyfin || ChannelFlickViewModel.For(jellyfin, IsLive ? entry.ItemId : null, entry.ChannelId) is not { } flick) return false;
         Flick = flick;
         ControlsVisible = false;
         FlickActivity();
@@ -316,7 +316,7 @@ public partial class PlayerViewModel : ViewModelBase
             _ = client.ReportStoppedAsync(Report(paused: true));
         }
         StopServerSession();
-        if (liveStreamId is { } live) _ = client.CloseLiveStreamAsync(live);
+        if (liveStreamId is { } live && client is JellyfinClient jellyfin) _ = jellyfin.CloseLiveStreamAsync(live);
         liveStreamId = null;
     }
 
@@ -520,7 +520,7 @@ public partial class PlayerViewModel : ViewModelBase
         var programme = item.Kind is ItemKind.Movie or ItemKind.Episode;
         BugCorner = channel.BugCorner;
         BugWidth = 128 * channel.BugSize / 100.0;
-        BugUrl = channel.ShowsBug ? channel.LogoUrl(client, (int)(BugWidth * 2)) : null;
+        BugUrl = channel.ShowsBug && client is JellyfinClient jellyfin ? channel.LogoUrl(jellyfin, (int)(BugWidth * 2)) : null;
         BugOpacity = programme ? channel.BugOpacity / 100.0 : 0;
         if (programme && channel.BugHideAfter > 0)
         {
@@ -536,7 +536,7 @@ public partial class PlayerViewModel : ViewModelBase
     /// </summary>
     public bool SwitchChannel(int step)
     {
-        if (stopped || ChannelFlickViewModel.For(client, IsLive ? entry.ItemId : null, entry.ChannelId) is not { Channels.Count: > 1 } row) return false;
+        if (stopped || client is not JellyfinClient jellyfin || ChannelFlickViewModel.For(jellyfin, IsLive ? entry.ItemId : null, entry.ChannelId) is not { Channels.Count: > 1 } row) return false;
         row.Move(step);
         if (row.Selected is not { } next) return false;
         Tune(next);
@@ -549,9 +549,11 @@ public partial class PlayerViewModel : ViewModelBase
         if (isConverted && playSessionId is { } session) _ = client.StopTranscodingAsync(session);
     }
 
+    /// <summary>The user's track settings on Jellyfin and Emby; Plex's stay on Plex, so its files' own defaults lead.</summary>
     private async Task<PlaybackPreferences> LoadPreferencesAsync()
     {
-        try { return TrackRules.Preferences((await client.MeAsync()).Configuration); }
+        if (client is not JellyfinClient jellyfin) return new PlaybackPreferences();
+        try { return TrackRules.Preferences((await jellyfin.MeAsync()).Configuration); }
         catch (Exception error) when (IsServerError(error)) { return new PlaybackPreferences(); }
     }
 
@@ -608,7 +610,9 @@ public partial class PlayerViewModel : ViewModelBase
         var streams = source.MediaStreams ?? [];
         audioStreams = streams.Where(s => s.Type == "Audio").ToList();
         subtitleStreams = streams.Where(s => s.Type == "Subtitle").ToList();
-        var audio = entry.AudioStreamIndex ?? TrackRules.PreferredAudioTrack(streams, preferences!.AudioLanguage);
+        var audio = entry.AudioStreamIndex ?? TrackRules.PreferredAudioTrack(streams, preferences!.AudioLanguage)
+            // Plex keeps its account's language settings to itself, choosing the track it would play.
+            ?? (client.Kind == ServerKind.Plex ? source.DefaultAudioStreamIndex : null);
         var subtitle = TrackRules.ResolveSubtitle(entry, source, subtitleStreams, preferences!);
         var start = entry.StartTicks / 10_000_000.0;
 
@@ -1219,7 +1223,7 @@ public partial class PlayerViewModel : ViewModelBase
 
     private async Task<(IReadOnlyList<OpEdTheme> Plugin, IReadOnlyList<KnownTheme> Known)> ThemeDetailsAsync(BaseItem item)
     {
-        if (await client.OpEdThemesAsync(item.Id) is { } plugin) return (plugin, []);
+        if (client is JellyfinClient jellyfin && await jellyfin.OpEdThemesAsync(item.Id) is { } plugin) return (plugin, []);
         var known = await AnimeThemesLookup.ForEpisodeAsync(item, client);
         System.Diagnostics.Debug.WriteLine($"Playback: AnimeThemes has {known.Count} themes for {item.SeriesName}");
         return ([], known);
@@ -1242,7 +1246,7 @@ public partial class PlayerViewModel : ViewModelBase
         }
         else
         {
-            moments = item.Kind == ItemKind.MusicVideo ? await ThemeMoments.ForMusicVideoAsync(item, client) : [];
+            moments = item.Kind == ItemKind.MusicVideo && client is JellyfinClient jellyfin ? await ThemeMoments.ForMusicVideoAsync(item, jellyfin) : [];
         }
         if (stopped || Item?.Id != item.Id) return;
         themeMoments = moments;
@@ -1466,6 +1470,20 @@ public partial class PlayerViewModel : ViewModelBase
         close(Item);
     }
 
+    /// <summary>The report <see cref="Stop"/> sent, for the app to wait on as it closes.</summary>
+    private Task stopReport = Task.CompletedTask;
+
+    /// <summary>
+    /// Closing the app: waits a moment for the server to hear playback
+    /// stopped, which otherwise goes unsent as the app exits (Plex would show
+    /// it playing until it gave up on it).
+    /// </summary>
+    public void FinishReporting(TimeSpan longest)
+    {
+        try { stopReport.Wait(longest); }
+        catch (AggregateException) { }
+    }
+
     /// <summary>Stops playback and tells the server where it ended. Safe to call twice.</summary>
     public void Stop()
     {
@@ -1487,13 +1505,13 @@ public partial class PlayerViewModel : ViewModelBase
         if (HasStarted && !stopReported && Reports)
         {
             stopReported = true;
-            _ = client.ReportStoppedAsync(final);
+            stopReport = client.ReportStoppedAsync(final);
         }
         else
         {
             StopServerSession();
         }
-        if (liveStreamId is { } live) _ = client.CloseLiveStreamAsync(live);
+        if (liveStreamId is { } live && client is JellyfinClient jellyfin) _ = jellyfin.CloseLiveStreamAsync(live);
         Player.Dispose();
     }
 }
