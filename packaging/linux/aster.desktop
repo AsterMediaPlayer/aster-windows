@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Aster
+GenericName=Media Player
+Comment=Watch and listen from Jellyfin, Emby and Plex
+Exec=@APPDIR@/Aster.Desktop
+Icon=aster
+Terminal=false
+Categories=AudioVideo;Video;Player;
+Keywords=Jellyfin;Emby;Plex;media;anime;

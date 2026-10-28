@@ -23,6 +23,28 @@ of open-licensed films, shows and music.
 | ![Disc menu](docs/screenshots/disc-menu.jpg) | ![Music](docs/screenshots/music.jpg) |
 | **Disc menus**: JellyDisc menus with transitions and sounds | **Music**: Now Playing, with what's up next |
 
+## Download
+
+Get the latest from [Releases](https://github.com/AsterMediaPlayer/aster-windows/releases). Aster is in beta (0.10), following the Apple app.
+
+- **Windows 10 (1809) or later, 64-bit:** `Aster-…-windows-x64-setup.exe`
+  installs it for you alone, with no administrator prompt, and adds it to
+  the Start menu; the `…-windows-x64.zip` runs from any folder instead. The
+  app isn't code-signed yet, so the first time Windows SmartScreen may say
+  it protected your PC: choose **More info → Run anyway**.
+- **Linux, 64-bit:** unpack `Aster-…-linux-x64.tar.gz` and run
+  `./install.sh`, which puts it in `~/.local/opt/aster` with a menu entry
+  (`./install.sh --uninstall` removes it). It needs the mpv library:
+  `sudo apt install libmpv2` (Fedora: `mpv-libs`, Arch: `mpv`).
+
+Uninstalling or updating keeps your sign-ins and settings.
+
+A release is made by pushing a version tag (`git tag v0.10.0-beta` then
+`git push origin v0.10.0-beta`): the Release workflow builds the installer,
+the zip and the tarball, self-contained so no .NET is needed, and publishes
+them (as a pre-release when the version has a suffix). Run by hand from the
+Actions tab, it only builds them, to try.
+
 | Project | What it is |
 | --- | --- |
 | `src/Aster.Core` | The server interface every screen asks (`Server/IMediaServer`, the Apple app's `MediaServer`, with what each server can do and `ItemQuery` for its titles), Jellyfin client (Jellyfin and Emby), models, device profile, resume points, session storage (Windows Credential Manager), subtitle and trickplay helpers, JellyDisc models, audiobooks (grouping, chapters, speeds), anime openings and endings (found from chapters, and their song cards) |

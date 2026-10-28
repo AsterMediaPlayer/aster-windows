@@ -1,0 +1,125 @@
+# Builds the downloads: a Windows installer and portable zip, and a Linux
+# tarball, all self-contained (no .NET needed). Pushing a tag like
+# v0.10.0-beta publishes them as a GitHub release (a pre-release when the
+# version has a suffix); running it by hand only builds them, to try.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version to stamp on a trial build
+        default: 0.0.0-dev
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  version:
+    name: Version
+    runs-on: ubuntu-24.04
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - id: version
+        env:
+          TAG: ${{ github.ref_type == 'tag' && github.ref_name || '' }}
+          INPUT: ${{ inputs.version }}
+        run: |
+          version="${TAG#v}"
+          [ -n "$version" ] || version="$INPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+  windows:
+    name: Windows
+    needs: version
+    runs-on: windows-latest
+    timeout-minutes: 30
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+      - uses: actions/cache@v4
+        with:
+          path: native
+          key: libmpv-${{ hashFiles('tools/fetch-libmpv.ps1') }}
+      - name: Publish
+        run: dotnet publish src/Aster.Desktop -c Release -r win-x64 --self-contained -p:Version=$env:VERSION -p:DebugType=none -o publish/win-x64
+      - name: Zip
+        run: |
+          New-Item -ItemType Directory -Force dist | Out-Null
+          Compress-Archive -Path publish/win-x64/* -DestinationPath "dist/Aster-$env:VERSION-windows-x64.zip"
+      - name: Installer
+        run: |
+          choco install innosetup --no-progress -y
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" /Q "/DAppVersion=$env:VERSION" "/DSourceDir=$PWD\publish\win-x64" "/DOutputDir=$PWD\dist" installer\aster.iss
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: dist/*
+          if-no-files-found: error
+
+  linux:
+    name: Linux
+    needs: version
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+      - name: Publish
+        run: dotnet publish src/Aster.Desktop -c Release -r linux-x64 --self-contained -p:Version=$VERSION -p:DebugType=none -o "stage/Aster-$VERSION-linux-x64/aster"
+      - name: Tarball
+        run: |
+          dir="stage/Aster-$VERSION-linux-x64"
+          cp packaging/linux/aster.desktop packaging/linux/install.sh "$dir/"
+          cp src/Aster.Desktop/Assets/aster.png "$dir/aster.png"
+          chmod +x "$dir/install.sh" "$dir/aster/Aster.Desktop"
+          mkdir -p dist
+          tar -C stage -czf "dist/Aster-$VERSION-linux-x64.tar.gz" "Aster-$VERSION-linux-x64"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux
+          path: dist/*
+          if-no-files-found: error
+
+  release:
+    name: Release
+    if: github.ref_type == 'tag'
+    needs: [version, windows, linux]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Publish the release
+        run: |
+          prerelease=""
+          case "$VERSION" in *-*) prerelease="--prerelease" ;; esac
+          cat > notes.md <<'NOTES'
+          **Windows:** `…-windows-x64-setup.exe` installs Aster for you (no administrator needed); the `.zip` runs from any folder. The app isn't signed yet, so Windows SmartScreen may warn the first time: choose **More info → Run anyway**.
+
+          **Linux:** unpack the `.tar.gz` and run `./install.sh` (it needs the mpv library: `sudo apt install libmpv2`).
+          NOTES
+          gh release create "$GITHUB_REF_NAME" dist/* --repo "$GITHUB_REPOSITORY" \
+            --title "Aster $VERSION" --notes-file notes.md --generate-notes $prerelease
