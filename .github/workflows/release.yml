@@ -53,7 +53,10 @@ jobs:
           path: native
           key: libmpv-${{ hashFiles('tools/fetch-libmpv.ps1') }}
       - name: Publish
-        run: dotnet publish src/Aster.Desktop -c Release -r win-x64 --self-contained -p:Version=$env:VERSION -p:DebugType=none -o publish/win-x64
+        # DebugType=none covers our own projects; packages' native debug files (SkiaSharp's, some 100 MB) go too.
+        run: |
+          dotnet publish src/Aster.Desktop -c Release -r win-x64 --self-contained -p:Version=$env:VERSION -p:DebugType=none -o publish/win-x64
+          Remove-Item publish/win-x64/*.pdb -ErrorAction SilentlyContinue
       - name: Zip
         run: |
           New-Item -ItemType Directory -Force dist | Out-Null
@@ -82,7 +85,9 @@ jobs:
         with:
           dotnet-version: 10.0.x
       - name: Publish
-        run: dotnet publish src/Aster.Desktop -c Release -r linux-x64 --self-contained -p:Version=$VERSION -p:DebugType=none -o "stage/Aster-$VERSION-linux-x64/aster"
+        run: |
+          dotnet publish src/Aster.Desktop -c Release -r linux-x64 --self-contained -p:Version=$VERSION -p:DebugType=none -o "stage/Aster-$VERSION-linux-x64/aster"
+          find stage -name '*.pdb' -delete
       - name: Tarball
         run: |
           dir="stage/Aster-$VERSION-linux-x64"
