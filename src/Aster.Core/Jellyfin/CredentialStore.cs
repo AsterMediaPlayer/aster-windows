@@ -19,16 +19,51 @@ public static class CredentialStore
     private const uint CredPersistLocalMachine = 2;
     private const int ErrorNotFound = 1168;
 
+    /// <summary>
+    /// The most one credential holds (CRED_MAX_CREDENTIAL_BLOB_SIZE). A
+    /// longer secret (a Plex sign-in, with its tokens and every address, or
+    /// many saved servers) goes in parts: "Aster/session", then
+    /// "Aster/session/2" and on, read back in order.
+    /// </summary>
+    public const int PartSize = 2560;
+
+    private static string Target(string account, int part) => part == 1 ? TargetPrefix + account : $"{TargetPrefix}{account}/{part}";
+
     public static void Save(byte[] data, string account)
     {
-        var blob = Marshal.AllocHGlobal(data.Length);
+        var parts = Math.Max(1, (data.Length + PartSize - 1) / PartSize);
+        for (var part = 1; part <= parts; part++)
+        {
+            var start = (part - 1) * PartSize;
+            SaveOne(data.AsSpan(start, Math.Min(PartSize, data.Length - start)), Target(account, part));
+        }
+        // A shorter secret than before leaves no stale parts to be read after it.
+        for (var part = parts + 1; DeleteOne(Target(account, part)); part++) { }
+    }
+
+    public static byte[]? Load(string account)
+    {
+        if (LoadOne(Target(account, 1)) is not { } first) return null;
+        var all = new List<byte>(first);
+        for (var part = 2; LoadOne(Target(account, part)) is { } next; part++) all.AddRange(next);
+        return [.. all];
+    }
+
+    public static void Delete(string account)
+    {
+        for (var part = 1; DeleteOne(Target(account, part)) || part == 1; part++) { }
+    }
+
+    private static void SaveOne(ReadOnlySpan<byte> data, string target)
+    {
+        var blob = Marshal.AllocHGlobal(Math.Max(1, data.Length));
         try
         {
-            Marshal.Copy(data, 0, blob, data.Length);
+            Marshal.Copy(data.ToArray(), 0, blob, data.Length);
             var credential = new Credential
             {
                 Type = CredTypeGeneric,
-                TargetName = TargetPrefix + account,
+                TargetName = target,
                 CredentialBlobSize = (uint)data.Length,
                 CredentialBlob = blob,
                 Persist = CredPersistLocalMachine,
@@ -42,9 +77,9 @@ public static class CredentialStore
         }
     }
 
-    public static byte[]? Load(string account)
+    private static byte[]? LoadOne(string target)
     {
-        if (!CredRead(TargetPrefix + account, CredTypeGeneric, 0, out var pointer)) return null;
+        if (!CredRead(target, CredTypeGeneric, 0, out var pointer)) return null;
         try
         {
             var credential = Marshal.PtrToStructure<Credential>(pointer);
@@ -58,12 +93,13 @@ public static class CredentialStore
         }
     }
 
-    public static void Delete(string account)
+    /// <summary>False when there was none to delete.</summary>
+    private static bool DeleteOne(string target)
     {
-        if (!CredDelete(TargetPrefix + account, CredTypeGeneric, 0) && Marshal.GetLastWin32Error() != ErrorNotFound)
-        {
-            throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error());
-        }
+        if (CredDelete(target, CredTypeGeneric, 0)) return true;
+        var error = Marshal.GetLastWin32Error();
+        if (error == ErrorNotFound) return false;
+        throw new System.ComponentModel.Win32Exception(error);
     }
 
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
@@ -105,8 +141,11 @@ public sealed record StoredSession
     public required string UserName { get; init; }
     public required string AccessToken { get; init; }
 
-    /// <summary>Jellyfin or Emby; sessions saved before Emby was supported have none, and are Jellyfin.</summary>
+    /// <summary>Jellyfin, Emby or Plex; sessions saved before Emby was supported have none, and are Jellyfin.</summary>
     public ServerKind? ServerKind { get; init; }
+
+    /// <summary>A Plex sign-in's plex.tv side; null for Jellyfin and Emby.</summary>
+    public PlexLink? Plex { get; init; }
 
     [System.Text.Json.Serialization.JsonIgnore]
     public ServerKind Kind => ServerKind ?? Jellyfin.ServerKind.Jellyfin;
@@ -126,6 +165,36 @@ public sealed record StoredSession
     public static void Clear() => Secrets.Delete(Account);
 }
 
+/// <summary>A Plex sign-in's plex.tv side, kept with the session. The Apple app's PlexLink.</summary>
+public sealed record PlexLink
+{
+    /// <summary>The plex.tv account's token (the Home user's, once one is picked).</summary>
+    public required string AccountToken { get; init; }
+
+    /// <summary>The server's machineIdentifier.</summary>
+    public required string MachineId { get; init; }
+
+    /// <summary>Every connection plex.tv listed, best first.</summary>
+    public IReadOnlyList<PlexConnectionInfo> Connections { get; init; } = [];
+
+    /// <summary>
+    /// The Plex Home user signed in, and whether their profile has a PIN
+    /// (which locking and switching then ask for). Null without a Home.
+    /// </summary>
+    public string? HomeUserUuid { get; init; }
+
+    public bool? HomeUserHasPin { get; init; }
+
+    /// <summary>
+    /// The token from the plex.tv link code (the Home's account), which checks
+    /// a PIN: a profile's own token switching to itself is let through without one.
+    /// </summary>
+    public string? HomeToken { get; init; }
+}
+
+/// <summary>One way to reach a Plex server.</summary>
+public sealed record PlexConnectionInfo(Uri Uri, bool Local, bool Relay);
+
 /// <summary>
 /// A server signed in to, kept so the app can switch back to it without
 /// signing in again. The Apple app's SavedServer.
@@ -136,9 +205,15 @@ public sealed record SavedServer
 
     /// <summary>One per server and user.</summary>
     [System.Text.Json.Serialization.JsonIgnore]
-    public string Id => IdOf(Session.ServerUrl, Session.UserId);
+    public string Id => IdOf(Session);
 
-    public static string IdOf(Uri url, string userId) => url.AbsoluteUri + "|" + userId;
+    /// <summary>
+    /// The server and user: by address, or a Plex server by its own id, since
+    /// the address used to reach it can change.
+    /// </summary>
+    public static string IdOf(StoredSession session) => session.Plex is { } plex
+        ? $"plex:{plex.MachineId}|{session.UserId}"
+        : session.ServerUrl.AbsoluteUri + "|" + session.UserId;
 
     /// <summary>"Server", from its name, else its address.</summary>
     [System.Text.Json.Serialization.JsonIgnore]
@@ -256,9 +331,9 @@ public static class SavedServers
     }
 
     /// <summary>
-    /// Credential Manager keeps 2.5 KB a credential, room for about eight
-    /// servers; past that, the list as it was stays (the session in use is
-    /// kept on its own either way).
+    /// When the list can't be kept (Credential Manager or the Secret Service
+    /// turning it down), the list as it was stays; the session in use is kept
+    /// on its own either way.
     /// </summary>
     public static void Save(IReadOnlyList<SavedServer> servers)
     {
@@ -286,7 +361,7 @@ public static class SavedServers
     /// </summary>
     public static IReadOnlyList<SavedServer> Remember(IReadOnlyList<SavedServer> servers, StoredSession session)
     {
-        var id = SavedServer.IdOf(session.ServerUrl, session.UserId);
+        var id = SavedServer.IdOf(session);
         return servers.Any(s => s.Id == id)
             ? Change(servers, id, s => s with { Session = session })
             : [.. servers, new SavedServer { Session = session }];
