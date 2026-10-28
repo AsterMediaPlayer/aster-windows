@@ -1606,9 +1606,17 @@ public partial class PlayerViewModel : ViewModelBase
         _ = client.ReportProgressAsync(Report(paused: IsPaused), ResumePoints.Saving.Now);
     }
 
+    /// <summary>
+    /// Whether the player last closed by Back or Close was paused: a Live TV
+    /// channel closed while playing carries on in the Live TV header's mini
+    /// player, one closed while paused ends there, as in the Apple app.
+    /// </summary>
+    public static bool LastClosedWhilePaused { get; private set; }
+
     [RelayCommand]
     private void Close()
     {
+        LastClosedWhilePaused = IsPaused;
         Stop();
         close(Item);
     }

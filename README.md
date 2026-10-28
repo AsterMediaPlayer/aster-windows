@@ -126,6 +126,8 @@ These leave the saved session alone:
   All once the cards are in; `--play-all-full` takes the panel full screen.
 - `--playlist-picker` (with `--open`) opens that title's Add to Playlist.
 - `--paused` (with `--play`) pauses once it starts, for the pause screen.
+- `--mini <channelId>` (with `--tab livetv`) tunes that channel straight
+  into the Live TV header's mini player.
 - `ASTER_GAMEPAD_SCRIPT="10:down,12:a,14:b"` attaches a pretend game
   controller and presses its buttons that many seconds after starting (a,
   b, x, y, start, lb, rb, up, down, left, right; `hold-down` holds one a
@@ -315,8 +317,12 @@ channel plays the server's live stream in the player, with LIVE in place of
 the timeline; its captions follow the subtitle setting, on only when
 subtitles are always on.
 
-Not yet: the Apple app's mini player, which keeps a channel playing in the
-Live TV header after leaving full screen.
+**Mini player** (`Audio/LiveMiniPlayer`): closing a channel's full-screen
+player while it plays (not paused) keeps the channel going in the Live TV
+header, as the Apple app's mini player; clicking it goes full screen again,
+and its × (or leaving the Live TV page) ends it, closing the server's live
+stream. mpv's picture can't move from one view to another, so the channel
+is tuned again in the header, a moment's gap where the Apple app has none.
 
 ## Channels (Beta)
 

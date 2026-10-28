@@ -126,6 +126,7 @@ public sealed partial class LiveTVViewModel : ViewModelBase, IRefreshable, IGuid
     public LiveTVViewModel(INavigator navigator)
     {
         this.navigator = navigator;
+        Mini = new Aster.Desktop.Audio.LiveMiniPlayer(navigator.JellyfinOnly);
         Loaded = LoadAsync();
         RecordingsLoaded = LoadRecordingsAsync();
         Show(Section.OnNow);
@@ -321,7 +322,44 @@ public sealed partial class LiveTVViewModel : ViewModelBase, IRefreshable, IGuid
 
     // ---- Actions ----
 
-    public void PlayChannel(string channelId) => navigator.Play(new PlaybackQueueItem { ItemId = channelId });
+    /// <summary>The channel that carries on in the header after full screen closes.</summary>
+    public Aster.Desktop.Audio.LiveMiniPlayer Mini { get; }
+
+    /// <summary>The Live TV page is the one in view; set by the shell. Leaving it ends the mini player, as in the Apple app.</summary>
+    public bool IsInView
+    {
+        get => isInView;
+        set
+        {
+            isInView = value;
+            if (!value) Mini.Stop();
+        }
+    }
+
+    private bool isInView = true;
+
+    /// <summary>
+    /// Full screen; closed while it plays (not paused), the channel it was on
+    /// carries on in the header, as the Apple app's mini player.
+    /// </summary>
+    public void PlayChannel(string channelId)
+    {
+        Mini.Stop();
+        navigator.Play(new PlaybackQueueItem { ItemId = channelId }, last =>
+        {
+            if (IsInView && last is { Kind: ItemKind.TvChannel } channel && !PlayerViewModel.LastClosedWhilePaused) _ = Mini.StartAsync(channel);
+        });
+    }
+
+    /// <summary>The mini player clicked: full screen again.</summary>
+    [RelayCommand]
+    private void ExpandMini()
+    {
+        if (Mini.Channel is { } channel) PlayChannel(channel.Id);
+    }
+
+    /// <summary>The mini player's close button.</summary>
+    [RelayCommand] private void CloseMini() => Mini.Stop();
 
     public void OpenProgram(BaseItem program) => navigator.Push(new ProgramViewModel(navigator, this, program));
 

@@ -342,6 +342,8 @@ public partial class ShellViewModel : ViewModelBase, INavigator, IDisposable
     partial void OnCurrentPageChanged(ViewModelBase value)
     {
         Theme.PageChanged(value);
+        // Live TV's mini player plays only while its page is in view.
+        foreach (var live in tabs.Values.OfType<LiveTVViewModel>()) live.IsInView = ReferenceEquals(live, value);
         if (value is DetailViewModel detail) detail.ShowTheme();
     }
 
@@ -451,6 +453,7 @@ public partial class ShellViewModel : ViewModelBase, INavigator, IDisposable
     /// <summary>Signing out: the song or book stops, its place saved, and the theme with it.</summary>
     public void Dispose()
     {
+        foreach (var live in tabs.Values.OfType<LiveTVViewModel>()) live.Mini.Dispose();
         Deck.Dispose();
         Theme.Dispose();
         Audio.Dispose();

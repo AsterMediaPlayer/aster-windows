@@ -53,6 +53,8 @@ public partial class App : Application
             if (System.Array.IndexOf(args, "--playlist-picker") >= 0) main.OpensPlaylistPicker = true;
             // --paused (with --play): paused once it starts, for the pause screen.
             if (System.Array.IndexOf(args, "--paused") >= 0) main.StartsPaused = true;
+            // --mini <channelId> (with --tab livetv): that channel in the Live TV header's mini player.
+            if (System.Array.IndexOf(args, "--mini") is var mi and >= 0 && mi + 1 < args.Length) main.TuneMiniPlayer(args[mi + 1]);
             if (System.Array.IndexOf(args, "--channel") is var ch and >= 0 && ch + 1 < args.Length && int.TryParse(args[ch + 1], out var number)) main.TuneChannelWhenLoaded(number);
 #endif
             desktop.MainWindow = new MainWindow { DataContext = main };

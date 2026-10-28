@@ -308,6 +308,14 @@ public partial class MainViewModel : ViewModelBase, IServerAccounts
     /// <summary>For trying the panel (<c>--play-all</c>, <c>--play-all-full</c>): the <c>--open</c> show's Play All once its Music tab is ready; 2, full screen.</summary>
     public int PlaysAll { get; set; }
 
+    /// <summary>For trying it (<c>--mini</c>, with <c>--tab livetv</c>): that channel tuned straight into the Live TV header.</summary>
+    public async void TuneMiniPlayer(string channelId)
+    {
+        if (shell?.CurrentPage is not LiveTVViewModel live) return;
+        try { await live.Mini.StartAsync(await live.Client.ItemAsync(channelId)); }
+        catch (Exception error) when (error is JellyfinException or System.Net.Http.HttpRequestException) { }
+    }
+
     /// <summary>For trying the pause screen (<c>--paused</c>): what <c>--play</c> plays pauses once it starts.</summary>
     public bool StartsPaused { get; set; }
 

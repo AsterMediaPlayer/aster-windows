@@ -1,12 +1,15 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Aster.Desktop.ViewModels"
+             xmlns:c="using:Aster.Desktop.Controls"
+             xmlns:mpv="using:Aster.Mpv"
              x:Class="Aster.Desktop.Views.LiveTVView"
              x:DataType="vm:LiveTVViewModel">
 
     <!-- The title and sections stay put; the section beneath scrolls on its own. -->
     <DockPanel>
-        <StackPanel DockPanel.Dock="Top" Spacing="14" Margin="48,76,48,8">
+        <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto" Margin="48,0,48,0">
+        <StackPanel Spacing="14" Margin="0,76,0,8">
             <TextBlock Text="Live TV" FontSize="32" FontWeight="Bold" />
             <ItemsControl ItemsSource="{Binding Sections}">
                 <ItemsControl.ItemsPanel>
@@ -22,6 +25,26 @@
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
         </StackPanel>
+        <!-- The channel carrying on after full screen closed: click it to go full screen again. -->
+        <Panel Grid.Column="1" Width="288" Height="162" Margin="24,24,0,8" VerticalAlignment="Bottom" IsVisible="{Binding Mini.IsShown}">
+            <Button Command="{Binding ExpandMiniCommand}" Padding="0" CornerRadius="14" ClipToBounds="True" Background="Black"
+                    HorizontalAlignment="Stretch" VerticalAlignment="Stretch" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"
+                    ToolTip.Tip="{Binding Mini.Tip}" AutomationProperties.Name="{Binding Mini.Tip}">
+                <ContentControl Content="{Binding Mini.Player}" IsHitTestVisible="False" Focusable="False">
+                    <ContentControl.ContentTemplate>
+                        <DataTemplate x:DataType="mpv:MpvPlayer">
+                            <c:MpvVideoView Player="{Binding}" />
+                        </DataTemplate>
+                    </ContentControl.ContentTemplate>
+                </ContentControl>
+            </Button>
+            <Button Command="{Binding CloseMiniCommand}" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="8"
+                    Width="28" Height="28" CornerRadius="14" Padding="0" Background="#99000000"
+                    HorizontalContentAlignment="Center" VerticalContentAlignment="Center" ToolTip.Tip="Stop" AutomationProperties.Name="Stop the channel">
+                <TextBlock Text="&#xE711;" FontFamily="{StaticResource IconFont}" FontSize="10" Foreground="White" />
+            </Button>
+        </Panel>
+        </Grid>
         <ContentControl Content="{Binding CurrentSection}" />
     </DockPanel>
 </UserControl>
