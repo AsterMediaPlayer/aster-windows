@@ -1,0 +1,70 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Aster.Desktop.ViewModels"
+             xmlns:c="using:Aster.Desktop.Controls"
+             x:Class="Aster.Desktop.Views.PlaylistPickerView"
+             x:DataType="vm:PlaylistPickerViewModel"
+             Background="#0F0F0F">
+
+    <!-- Add to Playlist: a new one by name, or one of the user's, as the Apple app's picker. -->
+    <Panel>
+        <DockPanel Margin="64,76,64,40">
+            <StackPanel DockPanel.Dock="Top" Spacing="24">
+                <StackPanel Spacing="4">
+                    <TextBlock Text="Add to Playlist" FontSize="34" FontWeight="Bold" />
+                    <TextBlock Text="{Binding Count}" Foreground="{StaticResource Secondary}" />
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Spacing="12">
+                    <TextBox x:Name="NameBox" Text="{Binding NewName}" PlaceholderText="New playlist name" Width="420" />
+                    <Button Theme="{StaticResource PillButton}" Classes="prominent" Command="{Binding CreateCommand}" IsDefault="True">
+                        <TextBlock Text="Create" />
+                    </Button>
+                </StackPanel>
+                <TextBlock Text="{Binding Message}" Foreground="#FF8A80" TextWrapping="Wrap"
+                           IsVisible="{Binding Message, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                <ProgressBar IsIndeterminate="True" Width="160" HorizontalAlignment="Left" IsVisible="{Binding IsLoading}" />
+                <TextBlock Text="{Binding EmptyText}" Foreground="{StaticResource Secondary}" IsVisible="{Binding ShowsEmpty}" />
+                <TextBlock Text="Your Playlists" FontSize="20" FontWeight="SemiBold" IsVisible="{Binding ShowsList}" />
+            </StackPanel>
+
+            <ScrollViewer Margin="0,12,0,0" HorizontalScrollBarVisibility="Disabled" IsVisible="{Binding ShowsList}">
+                <ItemsControl ItemsSource="{Binding Playlists}" Width="620" HorizontalAlignment="Left">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel Spacing="8" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:PlaylistChoice">
+                            <Button Command="{Binding Add}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Padding="12,8"
+                                    CornerRadius="12" Background="#0FFFFFFF" AutomationProperties.Name="{Binding Title}"
+                                    IsEnabled="{Binding !$parent[UserControl].((vm:PlaylistPickerViewModel)DataContext).IsWorking}">
+                                <Grid ColumnDefinitions="Auto,*,Auto">
+                                    <Border Width="48" Height="48" CornerRadius="8" ClipToBounds="True" Background="{StaticResource CardBackground}" Margin="0,0,14,0">
+                                        <Panel>
+                                            <TextBlock Text="&#xE8FD;" FontFamily="{StaticResource IconFont}" FontSize="18" Opacity="0.4"
+                                                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                            <c:RemoteImage Url="{Binding Image}" />
+                                        </Panel>
+                                    </Border>
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                                        <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                        <TextBlock Text="{Binding Detail}" FontSize="12" Foreground="{StaticResource Secondary}"
+                                                   IsVisible="{Binding Detail, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                                    </StackPanel>
+                                    <TextBlock Grid.Column="2" Text="Add" Foreground="{StaticResource Secondary}" VerticalAlignment="Center" Margin="12,0,6,0" />
+                                </Grid>
+                            </Button>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+        </DockPanel>
+
+        <Button Command="{Binding BackCommand}" ToolTip.Tip="Back (Alt+←)" AutomationProperties.Name="Back" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="20"
+                Width="40" Height="40" CornerRadius="20" Padding="0" Background="#80000000"
+                HorizontalContentAlignment="Center" VerticalContentAlignment="Center">
+            <TextBlock Text="&#xE72B;" FontFamily="{StaticResource IconFont}" />
+        </Button>
+    </Panel>
+</UserControl>

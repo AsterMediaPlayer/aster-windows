@@ -124,6 +124,7 @@ These leave the saved session alone:
   plays; `--now-playing` (with `--play` on music) shows Now Playing.
 - `--play-all` (with `--open` on an anime show) presses its Music tab's Play
   All once the cards are in; `--play-all-full` takes the panel full screen.
+- `--playlist-picker` (with `--open`) opens that title's Add to Playlist.
 - `ASTER_GAMEPAD_SCRIPT="10:down,12:a,14:b"` attaches a pretend game
   controller and presses its buttons that many seconds after starting (a,
   b, x, y, start, lb, rb, up, down, left, right; `hold-down` holds one a
@@ -473,7 +474,15 @@ what the keyboard's keys do (next and previous are a book's chapters);
 fast-forward and rewind skip a book 30 seconds ahead and 15 back. A video
 isn't shown there; the player has its own keys.
 
-Not yet: Add to Playlist, downloads, and the sleep timer.
+**Add to Playlist** (`PlaylistPickerViewModel`): from a card's right-click
+menu (a movie, show, season or episode; a show adds all its episodes, a
+season its own), a title page's "•••" menu, a song's right-click menu, an
+album or playlist page (every song on it), and an anime show's Music tab
+(a theme's published music video, or Add All). The picker names a new
+playlist or adds to one of the user's of that kind (music or video), then
+goes back. Jellyfin and Emby only: Plex's playlists differ.
+
+Not yet: downloads, and the sleep timer.
 
 ## Plex
 

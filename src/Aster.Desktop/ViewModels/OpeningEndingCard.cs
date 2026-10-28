@@ -71,12 +71,19 @@ public partial class OpeningEndingCard : ObservableObject
     public bool HasFull => theme is { } t && (t.HasFullVersion == true || t.WithCut(ThemeCut.Full) is not null);
     public bool HasMusicVideo => theme is { } t && (t.HasMusicVideo == true || t.WithCut(ThemeCut.MusicVideo) is not null);
 
+    /// <summary>The music video the OP/ED plugin published it as, in Settings' version; null for a clip, or one not published.</summary>
+    public string? PublishedId => ThemeIn(null)?.LibraryItemId;
+
+    /// <summary>Opens Add to Playlist for its published music video; set by the page.</summary>
+    public Action<System.Collections.Generic.IReadOnlyList<string>>? AddToPlaylist { get; set; }
+
     /// <summary>
-    /// The card's menu: every version it can play, the one Settings prefers
-    /// ticked, and those still being made (which do nothing yet). Empty with
-    /// only the TV size.
+    /// The card's menu (a right click): every version it can play, the one
+    /// Settings prefers ticked, and those still being made (which do
+    /// nothing yet), when it has more than the TV size; then Add to Playlist
+    /// for its published music video.
     /// </summary>
-    public System.Collections.Generic.IReadOnlyList<TrackChoice> Cuts
+    public System.Collections.Generic.IReadOnlyList<TrackChoice> Menu
     {
         get
         {
@@ -85,11 +92,13 @@ public partial class OpeningEndingCard : ObservableObject
             var choices = theme.AvailableCuts.Select((cut, i) => new TrackChoice(i, cut.PlayTitle, cut == preferred, new RelayCommand(() => PlayCut(cut))))
                 .Concat(theme.PreparingCuts.Select((cut, i) => new TrackChoice(100 + i, $"{cut.SettingTitle} (Preparing…)", false, new RelayCommand(() => { }, () => false))))
                 .ToList();
-            return choices.Count > 1 ? choices : [];
+            if (choices.Count < 2) choices.Clear();
+            if (AddToPlaylist is { } add && PublishedId is { } id) choices.Add(new TrackChoice(200, "Add to Playlist…", false, new RelayCommand(() => add([id]))));
+            return choices;
         }
     }
 
-    public bool HasCuts => Cuts.Count > 0;
+    public bool HasMenu => Menu.Count > 0;
 
     /// <summary>The theme's season, place and version, for putting the row in the show's order.</summary>
     public (int Season, int Sequence, int Version) Order { get; private init; }

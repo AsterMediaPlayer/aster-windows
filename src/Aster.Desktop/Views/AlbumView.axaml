@@ -49,6 +49,7 @@
                                 </StackPanel>
                             </Button>
                             <Button Theme="{StaticResource PillButton}" Command="{Binding InstantMixCommand}" Content="Instant Mix" />
+                            <Button Theme="{StaticResource PillButton}" Command="{Binding AddToPlaylistCommand}" Content="Add to Playlist" IsVisible="{Binding CanAddToPlaylist}" />
                             <Button Theme="{StaticResource PillButton}" Command="{Binding ToggleFavoriteCommand}" ToolTip.Tip="Favorite" Width="44" Padding="0">
                                 <Panel>
                                     <TextBlock Text="&#xEB52;" FontFamily="{StaticResource IconFont}" IsVisible="{Binding IsFavorite}" HorizontalAlignment="Center" />

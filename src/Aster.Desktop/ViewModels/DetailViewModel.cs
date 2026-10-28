@@ -56,7 +56,7 @@ public partial class DetailViewModel : ViewModelBase, IRefreshable
     [NotifyPropertyChangedFor(nameof(Backdrop), nameof(Logo), nameof(SeriesLogo), nameof(SeriesName), nameof(Title), nameof(EpisodeCode),
         nameof(Metadata), nameof(Tagline), nameof(Overview), nameof(IsFavorite), nameof(IsPlayed), nameof(ShowsWatched), nameof(Remaining),
         nameof(CanGoToSeries), nameof(UsesSections), nameof(PlayLabel), nameof(Resumable), nameof(Information), nameof(HasInformation),
-        nameof(ShowsEpisodes), nameof(ShowsExtras), nameof(ShowsRelated), nameof(ShowsDetails))]
+        nameof(ShowsEpisodes), nameof(ShowsExtras), nameof(ShowsRelated), nameof(ShowsDetails), nameof(CanAddToPlaylist))]
     public partial BaseItem Item { get; set; }
 
     [ObservableProperty]
@@ -290,9 +290,12 @@ public partial class DetailViewModel : ViewModelBase, IRefreshable
             Similar = (await OrEmpty(similar)).Select(i => ItemCard.Landscape(navigator, i)).ToList();
             await LoadDiscMenuAsync();
             var found = await themes;
+            // Before the rows show, so the cards' menus have it.
+            foreach (var card in found) card.AddToPlaylist = ids => PlaylistActions.Pick(navigator, ids, "Video");
             Openings = found.Where(c => c.IsOpening).ToList();
             Endings = found.Where(c => !c.IsOpening).ToList();
             UpdateWatchThemes();
+            OnPropertyChanged(nameof(CanAddAllToPlaylist));
             if (playAllWhenReady is { } fullScreen && CanPlayAll)
             {
                 playAllWhenReady = null;
@@ -489,6 +492,13 @@ public partial class DetailViewModel : ViewModelBase, IRefreshable
         if (queue.FirstOrDefault(e => e.PlaysUnasked) is { } first) navigator.Deck.Play(first, queue, Item);
     }
 
+    /// <summary>The music videos the OP/ED plugin published these as, in the rows' order, as Settings' version.</summary>
+    private List<string> PublishedIds => Openings.Concat(Endings).Select(c => c.PublishedId).OfType<string>().ToList();
+
+    public bool CanAddAllToPlaylist => PlaylistActions.CanAdd(navigator) && PublishedIds.Count > 0;
+
+    [RelayCommand] private void AddAllToPlaylist() => PlaylistActions.Pick(navigator, PublishedIds, "Video");
+
     [RelayCommand]
     private void Shuffle()
     {
@@ -614,6 +624,11 @@ public partial class DetailViewModel : ViewModelBase, IRefreshable
     // ---- Doing ----
 
     [RelayCommand] private void Back() => navigator.Back();
+
+    /// <summary>The page's "•••" menu: a movie, show, season or episode can go in a video playlist.</summary>
+    public bool CanAddToPlaylist => PlaylistActions.CanAdd(navigator) && Item.Kind is ItemKind.Movie or ItemKind.Series or ItemKind.Season or ItemKind.Episode or ItemKind.MusicVideo;
+
+    [RelayCommand] private Task AddToPlaylistAsync() => PlaylistActions.PickForAsync(navigator, Item);
 
     [RelayCommand] private void PlayResume() => Play(fromBeginning: false);
 

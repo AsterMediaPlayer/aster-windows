@@ -307,6 +307,9 @@ public partial class MainViewModel : ViewModelBase, IServerAccounts
     /// <summary>For trying the panel (<c>--play-all</c>, <c>--play-all-full</c>): the <c>--open</c> show's Play All once its Music tab is ready; 2, full screen.</summary>
     public int PlaysAll { get; set; }
 
+    /// <summary>For trying it (<c>--playlist-picker</c>): the <c>--open</c> title's Add to Playlist.</summary>
+    public bool OpensPlaylistPicker { get; set; }
+
     /// <summary>For screenshots (<c>--now-playing</c>): music played with <c>--play</c> shows Now Playing.</summary>
     public bool OpensNowPlaying { get; set; }
 
@@ -330,6 +333,7 @@ public partial class MainViewModel : ViewModelBase, IServerAccounts
             if (section is not null && shell?.CurrentPage is DetailViewModel page) page.ShowSectionWhenReady(section);
             if (OpensDiscMenu && shell?.CurrentPage is DetailViewModel titled) titled.OpenDiscMenuWhenReady();
             if (PlaysAll > 0 && shell?.CurrentPage is DetailViewModel show) show.PlayAllWhenReady(fullScreen: PlaysAll == 2);
+            if (OpensPlaylistPicker && shell?.CurrentPage is DetailViewModel adding) adding.AddToPlaylistCommand.Execute(null);
         }
         catch (Exception error) when (error is JellyfinException or System.Net.Http.HttpRequestException) { }
     }

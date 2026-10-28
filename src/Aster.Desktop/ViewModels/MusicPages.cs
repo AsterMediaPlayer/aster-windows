@@ -124,7 +124,8 @@ public sealed class MusicViewModel : BrowsePageViewModel
             {
                 var songs = GridItems;
                 Navigator.Audio.Music.Play(songs, songs.ToList().FindIndex(s => s.Id == item.Id), shuffled: false, Navigator.JellyfinOnly);
-            });
+            },
+            PlaylistActions.CanAdd(Navigator) ? [new("Add to Playlist…", new RelayCommand(() => PlaylistActions.Pick(Navigator, [item.Id], "Audio")))] : null);
     }
 
     protected override async Task<IReadOnlyList<BrowseRow>> LoadTopAsync()
@@ -265,8 +266,9 @@ public sealed partial class AlbumViewModel : ViewModelBase, IRefreshable, IDispo
     /// <summary>On a playlist's own page: reorder and remove.</summary>
     private IReadOnlyList<TrackAction> RowActions(BaseItem song, int position)
     {
-        if (!IsPlaylist || song.PlaylistItemId is null) return [];
         var actions = new List<TrackAction>();
+        if (PlaylistActions.CanAdd(navigator)) actions.Add(new("Add to Playlist…", new RelayCommand(() => PlaylistActions.Pick(navigator, [song.Id], "Audio"))));
+        if (!IsPlaylist || song.PlaylistItemId is null) return actions;
         if (position > 0) actions.Add(new("Move Up", new AsyncRelayCommand(() => MoveAsync(song, position - 1))));
         if (position < tracks.Count - 1) actions.Add(new("Move Down", new AsyncRelayCommand(() => MoveAsync(song, position + 1))));
         actions.Add(new("Remove from Playlist", new AsyncRelayCommand(() => RemoveAsync(song))));
@@ -313,6 +315,11 @@ public sealed partial class AlbumViewModel : ViewModelBase, IRefreshable, IDispo
 
     [RelayCommand] private void Play() => PlayFrom(0, shuffled: false);
     [RelayCommand] private void Shuffle() => PlayFrom(Random.Shared.Next(Math.Max(tracks.Count, 1)), shuffled: true);
+
+    /// <summary>Every song on the page into a playlist.</summary>
+    public bool CanAddToPlaylist => PlaylistActions.CanAdd(navigator);
+
+    [RelayCommand] private void AddToPlaylist() => PlaylistActions.Pick(navigator, tracks.Select(t => t.Id).ToList(), "Audio");
 
     [RelayCommand]
     private async Task InstantMixAsync()

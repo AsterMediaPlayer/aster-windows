@@ -134,6 +134,7 @@
                         <Separator IsVisible="{Binding HasMenu}" />
                         <MenuItem Header="{Binding WatchedLabel}" Command="{Binding ToggleWatchedCommand}" IsVisible="{Binding HasMenu}" />
                         <MenuItem Header="{Binding FavoriteLabel}" Command="{Binding ToggleFavoriteCommand}" IsVisible="{Binding CanFavorite}" />
+                        <MenuItem Header="Add to Playlist…" Command="{Binding AddToPlaylistCommand}" IsVisible="{Binding CanAddToPlaylist}" />
                     </ContextMenu>
                 </Button.ContextMenu>
                 <Panel>
@@ -317,6 +318,7 @@
                         <Separator IsVisible="{Binding HasMenu}" />
                         <MenuItem Header="{Binding WatchedLabel}" Command="{Binding ToggleWatchedCommand}" IsVisible="{Binding HasMenu}" />
                         <MenuItem Header="{Binding FavoriteLabel}" Command="{Binding ToggleFavoriteCommand}" IsVisible="{Binding CanFavorite}" />
+                        <MenuItem Header="Add to Playlist…" Command="{Binding AddToPlaylistCommand}" IsVisible="{Binding CanAddToPlaylist}" />
                     </ContextMenu>
                 </Button.ContextMenu>
                 <Panel>

@@ -114,6 +114,11 @@ public partial class ItemCard : ObservableObject, ICard
     /// <summary>The menu's favourite, where the server keeps favourites (Plex doesn't).</summary>
     public bool CanFavorite => HasMenu && navigator.Client.Can(ServerCapabilities.Favorites);
 
+    /// <summary>A movie, show, season or episode can go in a video playlist (a show or season as its episodes).</summary>
+    public bool CanAddToPlaylist => HasMenu && PlaylistActions.CanAdd(navigator);
+
+    [RelayCommand] private Task AddToPlaylistAsync() => PlaylistActions.PickForAsync(navigator, Item);
+
     private bool PlaysItself => Item.Kind is not (ItemKind.Series or ItemKind.Season);
     private long ResumeTicks => Item.UserData?.PlaybackPositionTicks ?? 0;
 

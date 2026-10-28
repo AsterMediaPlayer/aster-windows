@@ -24,10 +24,10 @@
                 <Button Theme="{StaticResource CardButton}" Command="{Binding PlayCommand}" IsEnabled="{Binding CanPlay}"
                         Width="{StaticResource LandscapeWidth}" Height="{StaticResource LandscapeHeight}"
                         AutomationProperties.Name="{Binding Title}">
-                    <!-- A right click: the other versions (TV size, full, music video), where the plugin has them. -->
-                    <Button.ContextFlyout>
-                        <MenuFlyout ItemsSource="{Binding Cuts}" ItemContainerTheme="{StaticResource CutChoice}" />
-                    </Button.ContextFlyout>
+                    <!-- A right click: the other versions (TV size, full, music video), where the plugin has them, and Add to Playlist. -->
+                    <Button.ContextMenu>
+                        <ContextMenu ItemsSource="{Binding Menu}" ItemContainerTheme="{StaticResource CutChoice}" IsVisible="{Binding HasMenu}" />
+                    </Button.ContextMenu>
                     <Panel>
                         <TextBlock Text="{x:Static vm:OpeningEndingCard.Placeholder}" FontFamily="{StaticResource IconFont}" FontSize="36" Opacity="0.35"
                                    HorizontalAlignment="Center" VerticalAlignment="Center" />
@@ -200,6 +200,15 @@
                                     <TextBlock Text="&#xE930;" FontFamily="{StaticResource IconFont}" IsVisible="{Binding !IsPlayed}" HorizontalAlignment="Center" />
                                 </Panel>
                             </Button>
+                            <Button Theme="{StaticResource PillButton}" ToolTip.Tip="More" AutomationProperties.Name="More" Width="44" Padding="0"
+                                    IsVisible="{Binding CanAddToPlaylist}">
+                                <TextBlock Text="•••" FontSize="12" HorizontalAlignment="Center" />
+                                <Button.Flyout>
+                                    <MenuFlyout Placement="BottomEdgeAlignedLeft">
+                                        <MenuItem Header="Add to Playlist…" Command="{Binding AddToPlaylistCommand}" />
+                                    </MenuFlyout>
+                                </Button.Flyout>
+                            </Button>
                             <Button Theme="{StaticResource PillButton}" Command="{Binding GoToSeriesCommand}" IsVisible="{Binding CanGoToSeries}">
                                 <StackPanel Orientation="Horizontal" Spacing="10">
                                     <TextBlock Text="&#xE7F4;" FontFamily="{StaticResource IconFont}" VerticalAlignment="Center" />
@@ -253,6 +262,8 @@
                                 <TextBlock Text="Shuffle" />
                             </StackPanel>
                         </Button>
+                        <Button Theme="{StaticResource PillButton}" Command="{Binding AddAllToPlaylistCommand}" IsVisible="{Binding CanAddAllToPlaylist}"
+                                Content="Add All to Playlist" />
                     </StackPanel>
                     <c:ShelfView Title="Openings" Items="{Binding Openings}" ItemTemplate="{StaticResource OpeningEndingTemplate}" />
                     <c:ShelfView Title="Endings" Items="{Binding Endings}" ItemTemplate="{StaticResource OpeningEndingTemplate}" />
