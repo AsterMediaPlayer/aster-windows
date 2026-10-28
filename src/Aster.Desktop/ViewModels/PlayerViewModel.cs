@@ -19,6 +19,7 @@ using System.Threading.Tasks;
 using Aster.Core;
 using Aster.Core.Anime;
 using Aster.Core.Jellyfin;
+using Aster.Core.LiveTV;
 using Aster.Core.Playback;
 using Aster.Core.Server;
 using Aster.Desktop.Images;
@@ -157,12 +158,16 @@ public partial class PlayerViewModel : ViewModelBase
 
     // ---- State the view shows ----
 
-    [ObservableProperty] public partial BaseItem? Item { get; set; }
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowsPauseInfo))]
+    public partial BaseItem? Item { get; set; }
     [ObservableProperty] public partial string Title { get; set; } = "";
     [ObservableProperty] public partial string? Subtitle { get; set; }
 
     /// <summary>Playing has begun, so the loading cover can come off.</summary>
-    [ObservableProperty] public partial bool HasStarted { get; set; }
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowsPauseInfo))]
+    public partial bool HasStarted { get; set; }
 
     /// <summary>A Live TV channel: no timeline, no skipping, no speeds.</summary>
     [ObservableProperty]
@@ -223,6 +228,11 @@ public partial class PlayerViewModel : ViewModelBase
 
     /// <summary>For screenshots (<c>--flick</c>): the row opens once playing.</summary>
     public void OpenFlickWhenStarted() => flickWhenStarted = true;
+
+    private bool pauseWhenStarted;
+
+    /// <summary>For trying the pause screen (<c>--paused</c>): paused a moment after it starts.</summary>
+    public void PauseWhenStarted() => pauseWhenStarted = true;
 
     /// <summary>Opens the row on the channel playing; false when this isn't a channel.</summary>
     public bool OpenFlick()
@@ -328,7 +338,128 @@ public partial class PlayerViewModel : ViewModelBase
     /// <summary>The server's live stream for a channel, closed when it's done.</summary>
     private string? liveStreamId;
 
-    [ObservableProperty] public partial bool IsPaused { get; set; }
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowsPauseInfo))]
+    public partial bool IsPaused { get; set; }
+
+    // ---- The pause screen ----
+
+    /// <summary>
+    /// Paused, the title's logo shows in its name's place and its details
+    /// above the timeline, as on the Apple app's Mac and Apple TV; not for an
+    /// opening played on its own.
+    /// </summary>
+    public bool ShowsPauseInfo => IsPaused && HasStarted && Item is not null && !IsThemePlayback;
+
+    partial void OnIsPausedChanged(bool value)
+    {
+        if (!ShowsPauseInfo) return;
+        foreach (var name in new[] { nameof(PauseLogoUrl), nameof(PauseName), nameof(PauseHeading), nameof(PauseSubheading),
+                     nameof(PauseOverview), nameof(PauseFacts), nameof(PauseBadges) })
+            OnPropertyChanged(name);
+    }
+
+    /// <summary>A Channels-tab channel in its break (a clip, not a movie or episode): the channel's logo and name stand in.</summary>
+    private Aster.Core.Channels.PlaylistChannel? ChannelInBreak =>
+        entry.ChannelId is { } channelId && Item is { Kind: not (ItemKind.Movie or ItemKind.Episode) }
+            ? Aster.Core.Channels.ChannelTuner.Channel(channelId)
+            : null;
+
+    /// <summary>The title's clear logo (its series' for an episode), a Live TV channel's, or in a break the channel's.</summary>
+    public Uri? PauseLogoUrl
+    {
+        get
+        {
+            if (Item is not { } item) return null;
+            if (client is JellyfinClient jellyfin)
+            {
+                if (ChannelInBreak is { } channel) return channel.LogoUrl(jellyfin, 900);
+                if (item.Kind == ItemKind.TvChannel) return jellyfin.ChannelLogoUrl(item, 900);
+            }
+            return client.LogoUrl(item, 900);
+        }
+    }
+
+    /// <summary>In large type when there's no logo.</summary>
+    public string PauseName => ChannelInBreak?.Name
+        ?? (Item is { Kind: ItemKind.Episode } episode ? episode.SeriesName ?? episode.DisplayTitle : Item?.DisplayTitle ?? Title);
+
+    /// <summary>"Break" in a channel's break; on Live TV, the programme on now.</summary>
+    public string? PauseHeading => ChannelInBreak is not null ? "Break" : IsLive ? Item?.CurrentProgram?.Name : null;
+
+    public string? PauseSubheading =>
+        IsLive && Item?.CurrentProgram is { EpisodeTitle: { Length: > 0 } episode } program && episode != program.Name ? episode : null;
+
+    public string? PauseOverview
+    {
+        get
+        {
+            if (ChannelInBreak is not null) return null;
+            var overview = IsLive ? Item?.CurrentProgram?.Overview : Item?.Overview;
+            return string.IsNullOrWhiteSpace(overview) ? null : overview;
+        }
+    }
+
+    /// <summary>"2019 · TV-14 · 23 min"; on Live TV "511 NBC · 8:00 – 9:00 PM · 23 min left"; in a break, the channel.</summary>
+    public string? PauseFacts
+    {
+        get
+        {
+            if (Item is not { } item) return null;
+            var facts = new List<string>();
+            if (ChannelInBreak is { } channel)
+            {
+                facts.Add($"{channel.Number} {channel.Name}");
+            }
+            else if (IsLive)
+            {
+                var name = string.Join(" ", new[] { item.ChannelNumber, item.DisplayTitle }.OfType<string>());
+                if (name.Length > 0) facts.Add(name);
+                if (item.CurrentProgram is { } program)
+                {
+                    var slot = Aster.Core.LiveTV.LiveTVFormat.TimeRange(program.Start, program.End);
+                    if (slot.Length > 0) facts.Add(slot);
+                    if (program.End is { } end && end > DateTimeOffset.Now)
+                        facts.Add($"{Minutes((end - DateTimeOffset.Now).TotalSeconds)} left");
+                }
+            }
+            else
+            {
+                if (item.ProductionYear is { } year) facts.Add(year.ToString(CultureInfo.InvariantCulture));
+                if (item.OfficialRating is { } rating) facts.Add(rating);
+                var seconds = Duration > 0 ? Duration : (item.RunTimeTicks ?? 0) / 10_000_000.0;
+                if (seconds >= 60) facts.Add(Minutes(seconds));
+            }
+            return facts.Count == 0 ? null : string.Join(" · ", facts);
+        }
+    }
+
+    /// <summary>"23 min", "1 hr 52 min".</summary>
+    private static string Minutes(double seconds)
+    {
+        var minutes = Math.Max(1, (int)Math.Ceiling(seconds / 60));
+        return minutes >= 60 ? $"{minutes / 60} hr {minutes % 60} min" : $"{minutes} min";
+    }
+
+    /// <summary>What the stream is, as a TV's info shows: picture size and range, and captions.</summary>
+    public IReadOnlyList<string> PauseBadges
+    {
+        get
+        {
+            if (Player is not { } player || ChannelInBreak is not null) return [];
+            var badges = new List<string>();
+            try
+            {
+                var width = player.GetDouble("video-params/w") ?? 0;
+                if (width >= 3200) badges.Add("4K");
+                else if (width >= 1200) badges.Add("HD");
+                if (player.GetString("video-params/gamma") is "pq" or "hlg") badges.Add("HDR");
+            }
+            catch (Exception error) when (error is MpvException or ObjectDisposedException) { }
+            if (subtitleStreams.Count > 0) badges.Add("CC");
+            return badges;
+        }
+    }
     [ObservableProperty] public partial bool IsBuffering { get; set; }
     [ObservableProperty] public partial double Position { get; set; }
     [ObservableProperty] public partial double Duration { get; set; }
@@ -772,6 +903,11 @@ public partial class PlayerViewModel : ViewModelBase
         VideoAspect = Player.GetDouble("video-params/aspect") ?? 0;
         // After the controls showed, which the row takes the place of.
         if (flickWhenStarted && OpenFlick()) flickWhenStarted = false;
+        if (pauseWhenStarted)
+        {
+            pauseWhenStarted = false;
+            Player.SetProperty("pause", true);
+        }
         if (!Reports)
         {
             timedTimer.Start();

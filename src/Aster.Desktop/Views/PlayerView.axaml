@@ -182,10 +182,17 @@
                     <Button Classes="bar" DockPanel.Dock="Left" Command="{Binding CloseCommand}" ToolTip.Tip="Back (Esc)">
                         <TextBlock Classes="icon" Text="&#xE72B;" />
                     </Button>
-                    <StackPanel Margin="12,0,0,0" VerticalAlignment="Center">
+                    <StackPanel Margin="12,0,0,0" VerticalAlignment="Center" IsVisible="{Binding !ShowsPauseInfo}">
                         <TextBlock Text="{Binding Title}" FontSize="20" FontWeight="SemiBold" Foreground="White" />
                         <TextBlock Text="{Binding Subtitle}" FontSize="14" Foreground="#CCFFFFFF" />
                     </StackPanel>
+                    <!-- Paused: the title's logo in its name's place (or the name, large, when there's none). -->
+                    <Panel Margin="16,4,0,0" HorizontalAlignment="Left" VerticalAlignment="Top" IsVisible="{Binding ShowsPauseInfo}">
+                        <TextBlock Text="{Binding PauseName}" FontSize="34" FontWeight="Heavy" Foreground="White" TextWrapping="Wrap" MaxLines="2"
+                                   MaxWidth="600" IsVisible="{Binding !#PauseLogo.HasImage}" />
+                        <c:RemoteImage x:Name="PauseLogo" Url="{Binding PauseLogoUrl}" MaxWidth="420" MaxHeight="150" Stretch="Uniform"
+                                       HorizontalAlignment="Left" VerticalAlignment="Top" />
+                    </Panel>
                 </DockPanel>
             </Border>
 
@@ -197,6 +204,37 @@
                     </LinearGradientBrush>
                 </Border.Background>
                 <StackPanel Spacing="4">
+                    <!-- Paused: what it is, its description drifting slowly up so it can be read to the end, and what the stream is. -->
+                    <Border IsVisible="{Binding ShowsPauseInfo}" MaxWidth="760" HorizontalAlignment="Left" Margin="0,0,0,18" Padding="24,20"
+                            CornerRadius="22" Background="#B3101010" BorderThickness="1" BorderBrush="#1FFFFFFF">
+                        <StackPanel Spacing="10">
+                            <StackPanel Spacing="4" IsVisible="{Binding PauseHeading, Converter={x:Static ObjectConverters.IsNotNull}}">
+                                <TextBlock Text="{Binding PauseHeading}" FontSize="22" FontWeight="Bold" Foreground="White" TextTrimming="CharacterEllipsis" />
+                                <TextBlock Text="{Binding PauseSubheading}" FontSize="15" FontWeight="SemiBold" Foreground="White" TextTrimming="CharacterEllipsis"
+                                           IsVisible="{Binding PauseSubheading, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                            </StackPanel>
+                            <c:AutoScrollText Text="{Binding PauseOverview}" TextElement.FontSize="17" TextElement.Foreground="#BFFFFFFF"
+                                              IsVisible="{Binding PauseOverview, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                <TextBlock Text="{Binding PauseFacts}" FontSize="15" Foreground="#D9FFFFFF" VerticalAlignment="Center"
+                                           IsVisible="{Binding PauseFacts, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                                <ItemsControl ItemsSource="{Binding PauseBadges}" VerticalAlignment="Center">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <StackPanel Orientation="Horizontal" Spacing="8" />
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="x:String">
+                                            <Border CornerRadius="5" Padding="7,1" BorderBrush="White" BorderThickness="2" Background="White">
+                                                <TextBlock Text="{Binding}" FontSize="11" FontWeight="Heavy" Foreground="Black" />
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
                     <!-- Live TV and Channels have no timeline: LIVE, or the channel, in its place. -->
                     <Border Background="#E53935" CornerRadius="4" Padding="8,2" HorizontalAlignment="Left" IsVisible="{Binding HasBadge}">
                         <TextBlock Text="{Binding Badge}" Foreground="White" FontWeight="Bold" FontSize="12" LetterSpacing="1" />

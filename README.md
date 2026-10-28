@@ -125,6 +125,7 @@ These leave the saved session alone:
 - `--play-all` (with `--open` on an anime show) presses its Music tab's Play
   All once the cards are in; `--play-all-full` takes the panel full screen.
 - `--playlist-picker` (with `--open`) opens that title's Add to Playlist.
+- `--paused` (with `--play`) pauses once it starts, for the pause screen.
 - `ASTER_GAMEPAD_SCRIPT="10:down,12:a,14:b"` attaches a pretend game
   controller and presses its buttons that many seconds after starting (a,
   b, x, y, start, lb, rb, up, down, left, right; `hold-down` holds one a
@@ -431,6 +432,14 @@ audio track, S or C next subtitle track, Page Up and Page Down the next
 chapter and back (to the start of this one, or the one before within its
 first 3 seconds), Enter takes the skip on offer, F or a double-click full
 screen, Esc leaves full screen and then the player.
+
+**Pause screen**, as on the Apple app's Mac and Apple TV: paused, the
+title's clear logo (its series' for an episode) takes its name's place, and
+above the timeline a panel shows its description, drifting slowly up when
+it's long (`Controls/AutoScrollText`), with the year, rating and length and
+what the stream is (4K or HD, HDR, CC). On a Live TV channel it shows the
+channel's logo and the programme on now with its time left; in a Channels
+break, the channel.
 
 Not yet: downloads, and HDR passthrough (HDR is
 tone-mapped to SDR, since the video is drawn through OpenGL so the controls

@@ -51,6 +51,8 @@ public partial class App : Application
             if (System.Array.IndexOf(args, "--play-all-full") >= 0) main.PlaysAll = 2;
             // --playlist-picker (with --open): that title's Add to Playlist.
             if (System.Array.IndexOf(args, "--playlist-picker") >= 0) main.OpensPlaylistPicker = true;
+            // --paused (with --play): paused once it starts, for the pause screen.
+            if (System.Array.IndexOf(args, "--paused") >= 0) main.StartsPaused = true;
             if (System.Array.IndexOf(args, "--channel") is var ch and >= 0 && ch + 1 < args.Length && int.TryParse(args[ch + 1], out var number)) main.TuneChannelWhenLoaded(number);
 #endif
             desktop.MainWindow = new MainWindow { DataContext = main };

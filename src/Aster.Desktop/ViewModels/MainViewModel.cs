@@ -273,6 +273,7 @@ public partial class MainViewModel : ViewModelBase, IServerAccounts
             closed?.Invoke(last);
         });
         if (OpensChannelRow) player.OpenFlickWhenStarted();
+        if (StartsPaused) player.PauseWhenStarted();
         CurrentPage = player;
     }
 
@@ -306,6 +307,9 @@ public partial class MainViewModel : ViewModelBase, IServerAccounts
 
     /// <summary>For trying the panel (<c>--play-all</c>, <c>--play-all-full</c>): the <c>--open</c> show's Play All once its Music tab is ready; 2, full screen.</summary>
     public int PlaysAll { get; set; }
+
+    /// <summary>For trying the pause screen (<c>--paused</c>): what <c>--play</c> plays pauses once it starts.</summary>
+    public bool StartsPaused { get; set; }
 
     /// <summary>For trying it (<c>--playlist-picker</c>): the <c>--open</c> title's Add to Playlist.</summary>
     public bool OpensPlaylistPicker { get; set; }
