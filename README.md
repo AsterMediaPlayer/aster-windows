@@ -69,7 +69,7 @@ These leave the saved session alone:
   for an Emby or Plex server (with a Plex token, and any user id).
 - `--plex-sign-in` opens Plex's sign-in straight away.
 - `--open <itemId>` opens a title's (or library's, or person's) page.
-- `--tab <search|movies|shows|anime|music|audiobooks|upcoming|livetv|channels|library|settings>` starts on a tab; `--sort <Name|DateAdded|ReleaseDate|Rating>` sorts it, and on Live TV `--section <on-now|guide|channels|recordings>` picks its section.
+- `--tab <search|movies|shows|anime|music|audiobooks|upcoming|livetv|channels|library|settings>` starts on a tab; `--sort <Name|DateAdded|ReleaseDate|Rating>` sorts it, and on Live TV `--section <on-now|guide|channels|recordings>` picks its section; with `--open`, `--section <episodes|music|extras|related|details>` picks the title page's tab.
 - Signing out of such a session only ends it; the saved sign-in is left alone.
 - `--play <itemId>` plays a title straight away, from its resume point;
   `--start <seconds>` and `--max-bitrate <bps>` change where it starts and
@@ -446,8 +446,12 @@ keeps the resume point and marks a finished title watched. Skips come from
 Plex Pass's intro and credits markers, else from chapters named as an
 opening or ending (no longer than four minutes: some files call their whole
 first half "Intro"). Closing the app waits a moment for the stop report,
-which otherwise went unsent (Jellyfin's too). Not yet on Plex: scrubbing
-previews, chapter pictures, and the Openings & Endings tab's clips.
+which otherwise went unsent (Jellyfin's too). An anime show's Openings &
+Endings come from its episodes' chapters, each episode asked for its own
+(Plex lists none with a show's episodes), with Plex's chapter pictures; the
+opening looping on the page plays from the episode's file, whose id is
+remembered from reading it. Not yet on Plex: scrubbing previews (Plex's
+preview thumbnails, which a server makes only when set to).
 
 Locking: asking to switch, and Lock After, ask for the Plex Home profile's
 PIN, which plex.tv checks by switching to the profile with the Home's own

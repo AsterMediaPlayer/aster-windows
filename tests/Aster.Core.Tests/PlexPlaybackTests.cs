@@ -121,6 +121,26 @@ public class PlexPlaybackTests
         Assert.Equal("https://elsewhere/x?y=1", client.AbsoluteUrl("https://elsewhere/x?y=1")?.ToString());
     }
 
+    /// <summary>A chapter's picture is fetched as it is: the photo transcoder refuses a chapter's path.</summary>
+    [Fact]
+    public void ChapterPicturesByTheirOwnAddress()
+    {
+        var chapter = PlexMapper.Item(new PlexMetadata
+        {
+            RatingKey = "6359",
+            Type = "episode",
+            Chapter = [new PlexChapter { Tag = "Intro", StartTimeOffset = 33, Thumb = "/library/media/8913/chapterImages/1" }],
+        }).Chapters![0];
+        Assert.Equal("/library/media/8913/chapterImages/1", chapter.ImageTag);
+        Assert.Equal("http://192.168.1.240:32400/library/media/8913/chapterImages/1?X-Plex-Token=tok",
+            Client().ChapterImageUrl("6359", 0, chapter.ImageTag!).ToString());
+    }
+
+    /// <summary>A title's video needs its file's id, known only once the title's been read in full.</summary>
+    [Fact]
+    public void AnUnreadTitleHasNoVideoAddress() =>
+        Assert.Throws<NotSupportedException>(() => Client().VideoStreamUrl("6359"));
+
     [Theory]
     [InlineData("http://192.168.1.240:32400", true)]
     [InlineData("http://10.0.0.5:32400", true)]

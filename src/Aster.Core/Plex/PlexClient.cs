@@ -409,13 +409,27 @@ public sealed partial class PlexClient : IMediaServer
             .ToList();
     }
 
+    /// <summary>How many episodes are asked for their chapters at once.</summary>
+    private const int ChapterLookups = 6;
+
     /// <summary>
-    /// Every episode in airing order, with its chapters. Plex lists chapters
-    /// only for one title at a time; this comes with Plex playback, which
-    /// plays the clips it finds.
+    /// Every episode in airing order, with its chapters, for the openings and
+    /// endings found in them. Plex lists chapters only one title at a time,
+    /// so each episode is asked for its own (a few at once).
     /// </summary>
-    public Task<IReadOnlyList<BaseItem>> EpisodesWithChaptersAsync(string seriesId, CancellationToken ct = default) =>
-        Task.FromResult<IReadOnlyList<BaseItem>>([]);
+    public async Task<IReadOnlyList<BaseItem>> EpisodesWithChaptersAsync(string seriesId, CancellationToken ct = default)
+    {
+        var episodes = await ContainerAsync($"/library/metadata/{seriesId}/allLeaves", ct: ct).ConfigureAwait(false);
+        using var gate = new SemaphoreSlim(ChapterLookups);
+        var full = await Task.WhenAll((episodes.Metadata ?? []).Select(async episode =>
+        {
+            await gate.WaitAsync(ct).ConfigureAwait(false);
+            try { return await MetadataAsync(episode.RatingKey, ct).ConfigureAwait(false) ?? episode; }
+            catch (JellyfinException) { return episode; }
+            finally { gate.Release(); }
+        })).ConfigureAwait(false);
+        return full.Select(PlexMapper.Item).ToList();
+    }
 
     /// <summary>Plex keeps no favourites (its watchlist is plex.tv's, for later).</summary>
     public Task SetFavoriteAsync(string id, bool favorite, CancellationToken ct = default) =>

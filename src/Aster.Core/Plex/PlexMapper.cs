@@ -71,7 +71,7 @@ public static class PlexMapper
             Studios = metadata.Studio is { } studio ? [new NameGuidPair { Name = studio }] : null,
             People = People(metadata),
             ProviderIds = ProviderIds(metadata),
-            Chapters = metadata.Chapter?.Select(c => new ChapterInfo { StartPositionTicks = c.StartTimeOffset * TicksPerMillisecond, Name = c.Tag }).ToList(),
+            Chapters = metadata.Chapter?.Select(c => new ChapterInfo { StartPositionTicks = c.StartTimeOffset * TicksPerMillisecond, Name = c.Tag, ImageTag = c.Thumb }).ToList(),
             MediaStreams = metadata.Media?.FirstOrDefault()?.Part?.FirstOrDefault()?.Stream?.Select(Stream).ToList(),
             Container = metadata.Media?.FirstOrDefault()?.Container,
             IsFolder = kind is ItemKind.Series or ItemKind.Season or ItemKind.BoxSet,

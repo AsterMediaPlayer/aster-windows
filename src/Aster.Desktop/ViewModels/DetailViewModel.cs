@@ -439,6 +439,14 @@ public partial class DetailViewModel : ViewModelBase, IRefreshable
             ? seasons.Select(s => new Choice(s.DisplayTitle, s.Id == SelectedSeasonId, new AsyncRelayCommand(() => SelectSeasonAsync(s.Id)))).ToList()
             : [];
 
+    /// <summary>A tab to show once it has something in it (<c>--open</c> with <c>--section</c>, for development).</summary>
+    private DetailSection? wantedSection;
+
+    public void ShowSectionWhenReady(string name)
+    {
+        if (Enum.TryParse<DetailSection>(name, ignoreCase: true, out var section)) wantedSection = section;
+    }
+
     /// <summary>The tabs with something in them, in order.</summary>
     private void UpdateSections()
     {
@@ -448,6 +456,11 @@ public partial class DetailViewModel : ViewModelBase, IRefreshable
         if (Extras.Count > 0) found.Add(DetailSection.Extras);
         if (Similar.Count > 0) found.Add(DetailSection.Related);
         found.Add(DetailSection.Details);
+        if (wantedSection is { } wanted && found.Contains(wanted))
+        {
+            Section = wanted;
+            wantedSection = null;
+        }
         if (!found.Contains(Section)) Section = DetailSection.Episodes;
         Sections = found.Select(s => new Choice(s.ToString(), s == Section, new RelayCommand(() =>
         {

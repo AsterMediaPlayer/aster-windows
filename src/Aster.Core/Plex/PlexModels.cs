@@ -96,6 +96,9 @@ public sealed record PlexChapter
     public string? Tag { get; init; }
     public long StartTimeOffset { get; init; }
     public long? EndTimeOffset { get; init; }
+
+    /// <summary>The chapter's picture, when Plex has made chapter thumbnails.</summary>
+    public string? Thumb { get; init; }
 }
 
 /// <summary>Plex Pass's detected intro and credits.</summary>

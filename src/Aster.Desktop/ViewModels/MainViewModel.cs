@@ -61,7 +61,7 @@ public partial class MainViewModel : ViewModelBase, IServerAccounts
             if (tab is { } startTab) shell!.ShowTab(startTab);
             if (sort is { } startSort && shell!.CurrentPage is BrowsePageViewModel page) page.SortIndex = (int)startSort;
             if (section is not null && shell!.CurrentPage is LiveTVViewModel live) live.ShowSection(section);
-            if (openItemId is not null) _ = OpenByIdAsync(client, openItemId);
+            if (openItemId is not null) _ = OpenByIdAsync(client, openItemId, section);
             if (playItemId is not null) _ = PlayByIdAsync(client, playItemId, maxBitrate, startSeconds);
             // Closed while away, or while locked: it's still locked (or its Plex address is looked into).
             CheckLock();
@@ -299,9 +299,14 @@ public partial class MainViewModel : ViewModelBase, IServerAccounts
     }
 
     /// <summary>Opens a page for <c>--open</c>: looked up first, so a library or person opens as one would from a card.</summary>
-    private async Task OpenByIdAsync(IMediaServer client, string itemId)
+    /// <param name="section">A tab of the title's page to show once it has something in it (<c>--section music</c>).</param>
+    private async Task OpenByIdAsync(IMediaServer client, string itemId, string? section)
     {
-        try { shell?.Open(await client.ItemAsync(itemId)); }
+        try
+        {
+            shell?.Open(await client.ItemAsync(itemId));
+            if (section is not null && shell?.CurrentPage is DetailViewModel page) page.ShowSectionWhenReady(section);
+        }
         catch (Exception error) when (error is JellyfinException or System.Net.Http.HttpRequestException) { }
     }
 

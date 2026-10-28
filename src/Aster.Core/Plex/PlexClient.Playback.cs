@@ -93,8 +93,22 @@ public sealed partial class PlexClient
             ["X-Plex-Session-Identifier"] = playSessionId,
         });
 
-    /// <summary>Needs the title's file id, which this doesn't have; the openings it's for come later on Plex.</summary>
-    public Uri VideoStreamUrl(string itemId) => throw new NotSupportedException(PlexErrors.NotBuilt);
+    /// <summary>
+    /// The files of titles read in full (with their chapters, or to play):
+    /// the address of a title's video needs its file's id, which a list of
+    /// titles leaves out.
+    /// </summary>
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, long> partIds = new();
+
+    /// <summary>
+    /// A title's video as it is, for an opening looping on its show's page;
+    /// known once the title's been read in full (as the openings and
+    /// endings are found from its chapters).
+    /// </summary>
+    public Uri VideoStreamUrl(string itemId) =>
+        partIds.TryGetValue(itemId, out var part)
+            ? DirectStreamUrl(itemId, IdText(part), null)
+            : throw new NotSupportedException(PlexErrors.NotBuilt);
 
     public Uri? AbsoluteUrl(string serverRelative)
     {
@@ -159,18 +173,28 @@ public sealed partial class PlexClient
 
     public Uri TrickplayTileUrl(string itemId, int width, int index, string mediaSourceId) => throw new NotSupportedException(PlexErrors.NotBuilt);
     public Uri ChapterImageUrl(string itemId, int index, long? stamp) => throw new NotSupportedException(PlexErrors.NotBuilt);
-    public Uri ChapterImageUrl(string itemId, int index, string tag) => throw new NotSupportedException(PlexErrors.NotBuilt);
+
+    /// <summary>
+    /// A chapter's picture, by its path (<paramref name="tag"/>): as it is,
+    /// since it's small already (and the photo transcoder refuses a chapter's
+    /// path without the token inside it).
+    /// </summary>
+    public Uri ChapterImageUrl(string itemId, int index, string tag) => Url(tag, new Dictionary<string, string?> { ["X-Plex-Token"] = AccessToken });
 
     // ---- Helpers ----
 
     private static string IdText(long value) => value.ToString(CultureInfo.InvariantCulture);
 
-    private async Task<PlexMetadata?> MetadataAsync(string id, CancellationToken ct) =>
-        (await ContainerAsync($"/library/metadata/{id}", new Dictionary<string, string?>
+    private async Task<PlexMetadata?> MetadataAsync(string id, CancellationToken ct)
+    {
+        var metadata = (await ContainerAsync($"/library/metadata/{id}", new Dictionary<string, string?>
         {
             ["includeMarkers"] = "1",
             ["includeChapters"] = "1",
         }, ct: ct).ConfigureAwait(false)).Metadata?.FirstOrDefault();
+        if (metadata?.Media?.FirstOrDefault()?.Part?.FirstOrDefault() is { } part) partIds[metadata.RatingKey] = part.Id;
+        return metadata;
+    }
 
     private async Task TimelineAsync(PlaybackReport report, string state)
     {
