@@ -84,10 +84,16 @@ public sealed partial class ProgramViewModel : ViewModelBase
         catch (Exception error) when (error is JellyfinException or System.Net.Http.HttpRequestException or TimeoutException) { }
     }
 
+    /// <summary>
+    /// The page closes and then the channel plays, as in the Apple app, so
+    /// closing the player lands on Live TV with the channel in its header.
+    /// </summary>
     [RelayCommand]
     private void Watch()
     {
-        if (Program.ChannelId is { } channel) live.PlayChannel(channel);
+        if (Program.ChannelId is not { } channel) return;
+        navigator.Back();
+        live.PlayChannel(channel);
     }
 
     [RelayCommand] private Task Record() => PerformAsync(client => client.RecordProgramAsync(Program.Id));
