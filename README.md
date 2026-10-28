@@ -409,7 +409,7 @@ Not yet: Add to Playlist, downloads, and the sleep timer.
 
 ## Plex
 
-Plex is being ported from the Apple app in steps. Every screen asks the
+Plex is ported from the Apple app. Every screen asks the
 server through `IMediaServer`, so a Plex server's titles show on the same
 pages as Jellyfin's: `Aster.Core/Plex` has Plex's replies (`PlexModels`),
 their conversion into the app's titles (`PlexMapper`, times in ticks and
