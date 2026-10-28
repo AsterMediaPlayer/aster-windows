@@ -68,6 +68,9 @@ public sealed partial class SettingsViewModel : ViewModelBase
     /// <summary>Opens one of the pages over the list.</summary>
     [RelayCommand] private void Open(SettingsPage page) => navigator.Push(new SettingsPageViewModel(this, page));
 
+    /// <summary>Aster's companion plugins on the server: the welcome screen's switches, any time.</summary>
+    [RelayCommand] private void OpenServerPlugins() => navigator.Push(new ServerPluginsPageViewModel(navigator.JellyfinOnly, accounts.ShowWelcome));
+
     /// <summary>Edit Channels, where an administrator makes the first channel (the Channels tab shows only once there's one).</summary>
     [RelayCommand] private void OpenChannels() => navigator.Push(new EditChannelsViewModel(navigator));
 

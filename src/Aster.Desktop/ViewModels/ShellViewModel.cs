@@ -146,6 +146,9 @@ public interface IServerAccounts
 
     /// <summary>Plex's sign-in, to pick a Home profile afresh; Cancel comes back.</summary>
     void SignInWithPlexAgain();
+
+    /// <summary>The welcome screen again, for the server in use.</summary>
+    void ShowWelcome();
 }
 
 /// <summary>

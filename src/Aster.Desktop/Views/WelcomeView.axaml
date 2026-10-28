@@ -1,0 +1,120 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Aster.Desktop.ViewModels"
+             x:Class="Aster.Desktop.Views.WelcomeView"
+             x:DataType="vm:WelcomeViewModel">
+
+    <UserControl.Styles>
+        <StyleInclude Source="avares://Aster.Desktop/Views/PluginStyles.axaml" />
+
+        <Style Selector="TextBlock.heading">
+            <Setter Property="FontSize" Value="26" />
+            <Setter Property="FontWeight" Value="Bold" />
+        </Style>
+        <Style Selector="TextBlock.subheading">
+            <Setter Property="FontSize" Value="16" />
+            <Setter Property="Foreground" Value="#99FFFFFF" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Setter Property="Margin" Value="0,4,0,16" />
+        </Style>
+    </UserControl.Styles>
+
+    <!-- Once for each Jellyfin server: what Aster does, then what its companion plugins add,
+         each a card; an administrator's plugin cards switch the plugin on and off. -->
+    <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+        <StackPanel Margin="48,56,48,56" Spacing="40" MaxWidth="1400">
+            <StackPanel Spacing="12" HorizontalAlignment="Center">
+                <Image Source="/Assets/Images/AsterLogo.png" Stretch="Uniform" Width="380" Margin="0,0,0,12" />
+                <TextBlock Text="Welcome to Aster" FontSize="40" FontWeight="Bold" HorizontalAlignment="Center" />
+                <TextBlock Text="{Binding Intro}" FontSize="18" Foreground="#99FFFFFF" TextWrapping="Wrap" TextAlignment="Center" />
+            </StackPanel>
+
+            <StackPanel>
+                <TextBlock Classes="heading" Text="Ready the moment you sign in" Margin="0,0,0,16" />
+                <UniformGrid x:Name="FeatureGrid" Columns="3" Margin="0,0,-16,0">
+                    <Border Classes="card">
+                        <StackPanel Spacing="8">
+                            <TextBlock Classes="cardIcon" Text="&#xE768;" />
+                            <TextBlock Classes="cardTitle" Text="Plays it all, as it was meant to be" />
+                            <TextBlock Classes="cardText" Text="Dolby Vision, HDR, and TrueHD and DTS:X sound, straight from your files. Even fancy anime subtitles look exactly as their makers styled them." />
+                        </StackPanel>
+                    </Border>
+                    <Border Classes="card">
+                        <StackPanel Spacing="8">
+                            <TextBlock Classes="cardIcon" Text="&#xE7F4;" />
+                            <TextBlock Classes="cardTitle" Text="Your own TV channels" />
+                            <TextBlock Classes="cardText" Text="Turn any playlist into a channel that's always on, then flip through them like cable, with a guide that shows what's on now and next." />
+                        </StackPanel>
+                    </Border>
+                    <Border Classes="card">
+                        <StackPanel Spacing="8">
+                            <TextBlock Classes="cardIcon" Text="&#xE8D6;" />
+                            <TextBlock Classes="cardTitle" Text="Music and audiobooks" />
+                            <TextBlock Classes="cardText" Text="Albums keep playing while you browse, and every audiobook picks up right where you left off, chapter and all." />
+                        </StackPanel>
+                    </Border>
+                </UniformGrid>
+            </StackPanel>
+
+            <StackPanel DataContext="{Binding Plugins}" x:DataType="vm:ServerPluginsViewModel">
+                <TextBlock Classes="heading" Text="Unlock even more" />
+                <TextBlock Classes="subheading" Text="{Binding $parent[UserControl].((vm:WelcomeViewModel)DataContext).PluginsNote}" />
+
+                <ProgressBar IsIndeterminate="True" Width="200" HorizontalAlignment="Center" Margin="0,60" IsVisible="{Binding IsLoading}" />
+
+                <ItemsControl ItemsSource="{Binding Plugins}" IsVisible="{Binding !IsLoading}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <UniformGrid Columns="3" Margin="0,0,-16,0" Loaded="PluginGridLoaded" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:PluginRow">
+                            <Panel>
+                                <!-- An administrator's: the whole card is the switch. -->
+                                <Button Classes="card" Command="{Binding FlipCommand}" IsEnabled="{Binding CanSwitch}"
+                                        IsVisible="{Binding $parent[ItemsControl].((vm:ServerPluginsViewModel)DataContext).IsAdmin}"
+                                        AutomationProperties.Name="{Binding PackageName}">
+                                    <DockPanel>
+                                        <Border Classes="onOff" DockPanel.Dock="Right" VerticalAlignment="Top" Classes.on="{Binding IsOn}" IsVisible="{Binding ShowsSwitch}">
+                                            <TextBlock Text="{Binding OnOff}" />
+                                        </Border>
+                                        <ContentControl Content="{Binding}" ContentTemplate="{StaticResource PluginCardBody}" />
+                                    </DockPanel>
+                                </Button>
+                                <!-- Anyone else's: whether it's on the server. -->
+                                <Border Classes="card" IsVisible="{Binding !$parent[ItemsControl].((vm:ServerPluginsViewModel)DataContext).IsAdmin}">
+                                    <ContentControl Content="{Binding}" ContentTemplate="{StaticResource PluginCardBody}" />
+                                </Border>
+                            </Panel>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <ContentControl Content="{Binding}" ContentTemplate="{StaticResource RestartControls}" Margin="0,8,0,0" />
+
+                <UniformGrid x:Name="NoteGrid" Columns="2" Margin="0,8,-16,0">
+                    <Border Classes="card">
+                        <StackPanel Spacing="8">
+                            <TextBlock Classes="cardIcon" Text="&#xE734;" />
+                            <TextBlock Classes="eyebrow" Text="ASTER AURORA · FOR THE WEB" />
+                            <TextBlock Classes="cardTitle" Text="Love the look? Take it to your browser" />
+                            <TextBlock Classes="cardText" Text="Aurora brings as much of Aster as it can to Jellyfin on the web: big hero banners, trailers playing behind titles, and more. Once Aster's repository is on your server, you'll find it in the plugin catalogue in Jellyfin's dashboard." />
+                        </StackPanel>
+                    </Border>
+                    <Border Classes="card" IsVisible="{Binding IsNotAdmin}">
+                        <StackPanel Spacing="8">
+                            <TextBlock Classes="cardIcon" Text="&#xE8D7;" />
+                            <TextBlock Classes="cardTitle" Text="Want these? Ask whoever runs your server" />
+                            <TextBlock Classes="cardText" Text="They can switch them on from Aster in a few seconds, or add this repository under Plugins ▸ Repositories in Jellyfin's dashboard:" />
+                            <SelectableTextBlock Classes="address" Text="{Binding RepositoryUrl}" />
+                        </StackPanel>
+                    </Border>
+                </UniformGrid>
+            </StackPanel>
+
+            <Button Content="Start Watching" Command="{Binding StartCommand}" IsDefault="True" Width="380"
+                    HorizontalAlignment="Center" HorizontalContentAlignment="Center" Classes="accent" />
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

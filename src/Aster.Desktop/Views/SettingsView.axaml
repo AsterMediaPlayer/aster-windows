@@ -48,6 +48,13 @@
                     <TextBlock Text="Channels (Beta)" VerticalAlignment="Center" />
                 </DockPanel>
             </Button>
+            <Button Classes="row" Command="{Binding OpenServerPluginsCommand}" IsVisible="{Binding IsJellyfin}">
+                <DockPanel>
+                    <TextBlock Classes="chevron" />
+                    <TextBlock Classes="icon" Text="&#xEA86;" />
+                    <TextBlock Text="Server Plugins" VerticalAlignment="Center" />
+                </DockPanel>
+            </Button>
 
             <Button Classes="row" Command="{Binding OpenCommand}" CommandParameter="{x:Static vm:SettingsPage.Account}" Margin="0,16,0,8">
                 <DockPanel>

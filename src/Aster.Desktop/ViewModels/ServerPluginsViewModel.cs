@@ -29,12 +29,13 @@ public sealed partial class PluginRow(ServerPluginsViewModel owner, AsterPlugin 
     };
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsOn), nameof(Caption), nameof(IsGood), nameof(OnOff), nameof(CanSwitch), nameof(ShowsSwitch))]
+    [NotifyPropertyChangedFor(nameof(IsOn), nameof(Caption), nameof(IsGood), nameof(IsInstalling), nameof(OnOff), nameof(CanSwitch), nameof(ShowsSwitch))]
     public partial PluginState State { get; set; } = PluginState.Unknown;
 
     public bool IsOn => State.IsOn;
     public string Caption => State.Caption;
     public bool IsGood => State.IsGood;
+    public bool IsInstalling => State.Status == PluginStatus.Installing;
     public string OnOff => State.IsOn ? "On" : "Off";
 
     /// <summary>An administrator's switch shows while the plugin can be switched.</summary>
@@ -259,4 +260,24 @@ public sealed partial class ServerPluginsViewModel : ObservableObject
         try { return await request; }
         catch (Exception error) when (IsServerError(error)) { return null; }
     }
+}
+
+/// <summary>
+/// Settings ▸ Server Plugins: the welcome screen's switches, any time, and
+/// the welcome screen itself again. The Apple app's ServerPluginsSettingsView.
+/// </summary>
+public sealed partial class ServerPluginsPageViewModel : ViewModelBase
+{
+    private readonly Action showWelcome;
+
+    public ServerPluginsPageViewModel(JellyfinClient client, Action showWelcome)
+    {
+        this.showWelcome = showWelcome;
+        Plugins = new ServerPluginsViewModel(client);
+        _ = Plugins.LoadAsync();
+    }
+
+    public ServerPluginsViewModel Plugins { get; }
+
+    [RelayCommand] private void ShowWelcome() => showWelcome();
 }

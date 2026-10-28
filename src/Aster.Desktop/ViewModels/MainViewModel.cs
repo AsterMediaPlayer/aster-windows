@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Aster.Core;
 using Aster.Core.Jellyfin;
 using Aster.Core.Playback;
 using Aster.Core.Plex;
@@ -143,6 +144,26 @@ public partial class MainViewModel : ViewModelBase, IServerAccounts
             // Disc menus come from Aster's Jellyfin plugin.
             (document, itemId, closed) => ShowDiscMenu((JellyfinClient)client, document, itemId, closed), kind => SignOutAsync(client, kind), this);
         CurrentPage = shell;
+        // Once for each Jellyfin server, people signed in before it included.
+        if (CurrentId is { } id && !AppSettings.Current.WelcomeSeen.Contains(id)) ShowWelcome();
+    }
+
+    /// <summary>
+    /// What Aster and its companion plugins do, over the app, for a Jellyfin
+    /// server (the plugins are Jellyfin's); Start Watching marks it seen and
+    /// comes back. The Apple app's needsWelcome.
+    /// </summary>
+    public void ShowWelcome()
+    {
+        if (shell is not { Jellyfin: { IsJellyfin: true } client } || CurrentId is not { } id) return;
+        var app = shell;
+        CurrentPage = new WelcomeViewModel(client, app.ServerName, () =>
+        {
+            var settings = AppSettings.Current;
+            if (!settings.WelcomeSeen.Contains(id)) AppSettings.Save(settings with { WelcomeSeen = [.. settings.WelcomeSeen, id] });
+            // Signed out, switched or locked meanwhile: leave it.
+            if (shell == app) CurrentPage = app;
+        });
     }
 
     /// <summary>Uses a saved server, asking for its password first when it's set to, or locked.</summary>
@@ -196,10 +217,11 @@ public partial class MainViewModel : ViewModelBase, IServerAccounts
     /// The window went to the background (or is closing): the clock for the
     /// server's Lock After starts. Not while a video or disc menu is up, as
     /// one plays on while another window has the keyboard; closing always.
+    /// The welcome screen counts as the app.
     /// </summary>
     public void NoteLeft(bool closing = false)
     {
-        if ((closing ? shell is not null : CurrentPage is ShellViewModel) && CurrentServer?.LockAfterMinutes is not null) AwayClock.NoteLeft();
+        if ((closing ? shell is not null : CurrentPage is ShellViewModel or WelcomeViewModel) && CurrentServer?.LockAfterMinutes is not null) AwayClock.NoteLeft();
     }
 
     /// <summary>The window is back (or Aster just opened): locks the server in use if it was away past its Lock After.</summary>

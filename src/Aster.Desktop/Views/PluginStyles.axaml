@@ -1,0 +1,149 @@
+<!-- Aster's companion plugins, for the welcome screen and Settings ▸ Server Plugins:
+     cards, a plugin's card body and status line, and the restart a change waits on. -->
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Aster.Desktop.ViewModels"
+        xmlns:c="using:Aster.Desktop.Controls">
+
+    <Styles.Resources>
+        <!-- A plugin: its icon, name, headline and summary, and where it stands. -->
+        <DataTemplate x:Key="PluginCardBody" x:DataType="vm:PluginRow">
+            <StackPanel Spacing="8">
+                <TextBlock Classes="cardIcon" Text="{Binding Icon}" />
+                <TextBlock Classes="eyebrow" Text="{Binding PackageName, Converter={x:Static c:Converters.Upper}}" />
+                <TextBlock Classes="cardTitle" Text="{Binding Headline}" />
+                <TextBlock Classes="cardText" Text="{Binding Summary}" />
+                <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,4,0,0" IsVisible="{Binding Caption, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                    <ProgressBar IsIndeterminate="True" Width="16" MinWidth="16" VerticalAlignment="Center" IsVisible="{Binding IsInstalling}" />
+                    <TextBlock Classes="status" Classes.good="{Binding IsGood}" Text="{Binding Caption}" />
+                </StackPanel>
+            </StackPanel>
+        </DataTemplate>
+
+        <!-- For an administrator: the restart a change waits on, or how it's going. -->
+        <DataTemplate x:Key="RestartControls" x:DataType="vm:ServerPluginsViewModel">
+            <StackPanel Spacing="12">
+                <StackPanel Spacing="12" IsVisible="{Binding ShowsRestartButton}">
+                    <TextBlock Classes="cardText" Text="Almost there. Your server needs a quick restart to finish." />
+                    <Button Content="Restart Server" HorizontalAlignment="Left">
+                        <Button.Flyout>
+                            <Flyout Placement="BottomEdgeAlignedLeft">
+                                <StackPanel Spacing="12" MaxWidth="300">
+                                    <TextBlock Text="Restart your server now?" FontWeight="SemiBold" />
+                                    <TextBlock Text="Anyone watching will be paused for about a minute." TextWrapping="Wrap" Opacity="0.7" />
+                                    <Button Content="Restart" Command="{Binding RestartServerCommand}" HorizontalAlignment="Right" />
+                                </StackPanel>
+                            </Flyout>
+                        </Button.Flyout>
+                    </Button>
+                </StackPanel>
+                <TextBlock Classes="cardText" IsVisible="{Binding ShowsRestartNote}"
+                           Text="Almost there. Restart Jellyfin to finish (it can't restart itself where it's running)." />
+                <StackPanel Orientation="Horizontal" Spacing="12" IsVisible="{Binding IsRestarting}">
+                    <ProgressBar IsIndeterminate="True" Width="16" MinWidth="16" VerticalAlignment="Center" />
+                    <TextBlock Classes="cardText" Text="Restarting your server. This usually takes about a minute…" />
+                </StackPanel>
+                <TextBlock Classes="error" Text="{Binding RestartError}" IsVisible="{Binding RestartError, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                <TextBlock Classes="error" Text="{Binding ErrorMessage}" IsVisible="{Binding ErrorMessage, Converter={x:Static ObjectConverters.IsNotNull}}" />
+            </StackPanel>
+        </DataTemplate>
+    </Styles.Resources>
+
+    <!-- A panel: quiet white, rounded; as a button, it lifts and brightens under the pointer or keyboard. -->
+    <Style Selector=":is(Control).card">
+        <Setter Property="Margin" Value="0,0,16,16" />
+    </Style>
+    <Style Selector="Border.card">
+        <Setter Property="Background" Value="#12FFFFFF" />
+        <Setter Property="CornerRadius" Value="20" />
+        <Setter Property="Padding" Value="22" />
+    </Style>
+    <Style Selector="Button.card">
+        <Setter Property="Background" Value="#12FFFFFF" />
+        <Setter Property="Foreground" Value="White" />
+        <Setter Property="CornerRadius" Value="20" />
+        <Setter Property="Padding" Value="22" />
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+        <Setter Property="VerticalAlignment" Value="Stretch" />
+        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+        <Setter Property="VerticalContentAlignment" Value="Top" />
+        <Setter Property="FocusAdorner" Value="{x:Null}" />
+        <Setter Property="RenderTransformOrigin" Value="50%,50%" />
+        <Setter Property="Transitions">
+            <Transitions>
+                <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.15" />
+            </Transitions>
+        </Setter>
+    </Style>
+    <Style Selector="Button.card:pointerover /template/ ContentPresenter, Button.card:focus-visible /template/ ContentPresenter">
+        <Setter Property="Background" Value="#33FFFFFF" />
+        <Setter Property="Foreground" Value="White" />
+        <Setter Property="BorderBrush" Value="#B3FFFFFF" />
+        <Setter Property="BorderThickness" Value="2" />
+        <Setter Property="BoxShadow" Value="0 12 24 0 #73000000" />
+    </Style>
+    <Style Selector="Button.card:focus-visible">
+        <Setter Property="RenderTransform" Value="scale(1.02)" />
+    </Style>
+    <Style Selector="Button.card:disabled /template/ ContentPresenter">
+        <Setter Property="Background" Value="#12FFFFFF" />
+        <Setter Property="Foreground" Value="White" />
+    </Style>
+
+    <Style Selector="TextBlock.cardIcon">
+        <Setter Property="FontFamily" Value="{StaticResource IconFont}" />
+        <Setter Property="FontSize" Value="30" />
+        <Setter Property="Foreground" Value="{DynamicResource SystemAccentColor}" />
+        <Setter Property="Margin" Value="0,0,0,8" />
+    </Style>
+    <Style Selector="TextBlock.eyebrow">
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Foreground" Value="#99FFFFFF" />
+    </Style>
+    <Style Selector="TextBlock.cardTitle">
+        <Setter Property="FontSize" Value="19" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+    <Style Selector="TextBlock.cardText">
+        <Setter Property="FontSize" Value="15" />
+        <Setter Property="Foreground" Value="#99FFFFFF" />
+        <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+    <Style Selector="SelectableTextBlock.address">
+        <Setter Property="FontFamily" Value="Consolas, monospace" />
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="Foreground" Value="#99FFFFFF" />
+        <Setter Property="TextWrapping" Value="Wrap" />
+        <Setter Property="Margin" Value="0,4,0,0" />
+    </Style>
+    <Style Selector="TextBlock.status">
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="FontWeight" Value="Medium" />
+        <Setter Property="Foreground" Value="#99FFFFFF" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="TextBlock.status.good">
+        <Setter Property="Foreground" Value="#6FD08C" />
+    </Style>
+    <Style Selector="TextBlock.error">
+        <Setter Property="Foreground" Value="#FF8A80" />
+        <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+
+    <!-- An administrator's card's switch: On in green, Off grey. -->
+    <Style Selector="Border.onOff">
+        <Setter Property="Background" Value="#26FFFFFF" />
+        <Setter Property="CornerRadius" Value="14" />
+        <Setter Property="Padding" Value="16,4" />
+        <Setter Property="Margin" Value="16,0,0,0" />
+    </Style>
+    <Style Selector="Border.onOff.on">
+        <Setter Property="Background" Value="#D934A853" />
+    </Style>
+    <Style Selector="Border.onOff > TextBlock">
+        <Setter Property="FontSize" Value="14" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+</Styles>
