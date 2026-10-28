@@ -109,7 +109,15 @@ public static class PlexAccount
 {
     public static readonly Uri Base = new("https://plex.tv/");
 
-    private static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(20) };
+    /// <remarks>Redirects are followed by <see cref="Net.CredentialSafeRedirects"/>, so the account's token never leaves plex.tv.</remarks>
+    private static readonly HttpClient Http = Client(TimeSpan.FromSeconds(20));
+
+    internal static HttpClient Client(TimeSpan timeout)
+    {
+        var client = Net.CredentialSafeRedirects.Client(new SocketsHttpHandler());
+        client.Timeout = timeout;
+        return client;
+    }
 
     private static async Task<T> SendAsync<T>(string path, HttpMethod? method = null, IReadOnlyDictionary<string, string>? query = null, string? token = null, CancellationToken ct = default)
     {
@@ -228,7 +236,8 @@ public static class PlexReconnect
 /// </summary>
 public static class PlexConnectionRace
 {
-    private static readonly HttpClient Http = new() { Timeout = Timeout.InfiniteTimeSpan };
+    /// <remarks>Each address is the server's own word; a redirect from one never takes the token elsewhere.</remarks>
+    private static readonly HttpClient Http = PlexAccount.Client(Timeout.InfiniteTimeSpan);
 
     /// <summary>Home network first, then the internet, then Plex's relay.</summary>
     public static int Rank(PlexConnectionInfo connection) => connection.Relay ? 2 : connection.Local ? 0 : 1;

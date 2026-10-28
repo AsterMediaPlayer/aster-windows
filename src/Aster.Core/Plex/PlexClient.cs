@@ -67,14 +67,19 @@ public static class PlexDevice
 
 public sealed partial class PlexClient : IMediaServer
 {
-    private static readonly HttpClient SharedHttp = new(new SocketsHttpHandler
+    /// <remarks>Redirects are followed by <see cref="Net.CredentialSafeRedirects"/>, so the token never goes to another host.</remarks>
+    private static readonly HttpClient SharedHttp = Http30();
+
+    private static HttpClient Http30()
     {
-        AutomaticDecompression = DecompressionMethods.All,
-        PooledConnectionLifetime = TimeSpan.FromMinutes(5),
-    })
-    {
-        Timeout = TimeSpan.FromSeconds(30),
-    };
+        var client = Net.CredentialSafeRedirects.Client(new SocketsHttpHandler
+        {
+            AutomaticDecompression = DecompressionMethods.All,
+            PooledConnectionLifetime = TimeSpan.FromMinutes(5),
+        });
+        client.Timeout = TimeSpan.FromSeconds(30);
+        return client;
+    }
 
     private readonly HttpClient http;
 

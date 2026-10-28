@@ -20,14 +20,18 @@ public sealed class JellyfinClient : IMediaServer
     /// One connection pool for the whole app. Timeouts are per request, since
     /// a subtitle extraction can take minutes where everything else gets 30 s.
     /// </summary>
-    private static readonly HttpClient SharedHttp = new(new SocketsHttpHandler
+    /// <remarks>Redirects are followed by <see cref="Net.CredentialSafeRedirects"/>, so the sign-in never goes to another host.</remarks>
+    private static readonly HttpClient SharedHttp = WithTimeout(Net.CredentialSafeRedirects.Client(new SocketsHttpHandler
     {
         AutomaticDecompression = DecompressionMethods.All,
         PooledConnectionLifetime = TimeSpan.FromMinutes(5),
-    })
+    }), Timeout.InfiniteTimeSpan);
+
+    private static HttpClient WithTimeout(HttpClient client, TimeSpan timeout)
     {
-        Timeout = Timeout.InfiniteTimeSpan,
-    };
+        client.Timeout = timeout;
+        return client;
+    }
 
     private static readonly TimeSpan RequestTimeout = TimeSpan.FromSeconds(30);
 
