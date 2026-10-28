@@ -166,6 +166,15 @@
                     <Border Classes="note">
                         <TextBlock Text="Anime with no theme video of its own loops its first opening behind the series page, when Theme videos is on. With sound, it plays quietly, like theme music." />
                     </Border>
+                    <Button Classes="row" Command="{Binding FlipCommand}" CommandParameter="ThemePanel">
+                        <DockPanel>
+                            <TextBlock Classes="value" Text="{Binding ThemePanel, Converter={x:Static c:Converters.OnOff}}" />
+                            <TextBlock Text="Now Playing panel" VerticalAlignment="Center" />
+                        </DockPanel>
+                    </Button>
+                    <Border Classes="note">
+                        <TextBlock Text="Openings and endings picked on a show's Music tab play in a panel at the top right, one after another, and keep playing while you browse. Off, they play full screen, one at a time." />
+                    </Border>
                 </StackPanel>
 
                 <!-- Account: the server in use, then every server signed in to, to switch between. -->

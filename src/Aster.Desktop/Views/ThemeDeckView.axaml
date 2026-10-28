@@ -1,0 +1,174 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:a="using:Aster.Desktop.Audio"
+             xmlns:c="using:Aster.Desktop.Controls"
+             xmlns:anime="using:Aster.Core.Anime"
+             xmlns:mpv="using:Aster.Mpv"
+             x:Class="Aster.Desktop.Views.ThemeDeckView"
+             x:DataType="a:ThemeDeck">
+
+    <UserControl.Styles>
+        <!-- The panel: dark glass at the top right, over whatever page is showing. -->
+        <Style Selector="Border#Panel">
+            <Setter Property="Width" Value="400" />
+            <Setter Property="HorizontalAlignment" Value="Right" />
+            <Setter Property="VerticalAlignment" Value="Top" />
+            <Setter Property="Margin" Value="0,16,20,0" />
+            <Setter Property="Padding" Value="16" />
+            <Setter Property="CornerRadius" Value="24" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="BorderBrush" Value="#2EFFFFFF" />
+            <Setter Property="BoxShadow" Value="0 16 48 0 #A6000000" />
+            <Setter Property="Background">
+                <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
+                    <GradientStop Offset="0" Color="#F0232A2E" />
+                    <GradientStop Offset="1" Color="#F5111416" />
+                </LinearGradientBrush>
+            </Setter>
+        </Style>
+        <!-- Full screen: the same panel fills the window, so its video carries on rather than starting over. -->
+        <Style Selector="Border#Panel.full">
+            <Setter Property="Width" Value="NaN" />
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+            <Setter Property="VerticalAlignment" Value="Stretch" />
+            <Setter Property="Margin" Value="0" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="CornerRadius" Value="0" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="BoxShadow" Value="none" />
+            <Setter Property="Background" Value="Black" />
+        </Style>
+        <Style Selector="Border#Video">
+            <Setter Property="Height" Value="207" />
+            <Setter Property="CornerRadius" Value="14" />
+        </Style>
+        <Style Selector="Border#Panel.full Border#Video">
+            <Setter Property="Height" Value="NaN" />
+            <Setter Property="CornerRadius" Value="0" />
+        </Style>
+        <Style Selector="Button.deck">
+            <Setter Property="Width" Value="40" />
+            <Setter Property="Height" Value="40" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="CornerRadius" Value="20" />
+            <Setter Property="Background" Value="#26FFFFFF" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="FontFamily" Value="{StaticResource IconFont}" />
+            <Setter Property="FontSize" Value="15" />
+        </Style>
+        <Style Selector="Button.deck:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#4DFFFFFF" />
+            <Setter Property="Foreground" Value="White" />
+        </Style>
+        <Style Selector="Button.deck.prominent">
+            <Setter Property="Width" Value="48" />
+            <Setter Property="Height" Value="48" />
+            <Setter Property="CornerRadius" Value="24" />
+            <Setter Property="Background" Value="White" />
+            <Setter Property="Foreground" Value="Black" />
+        </Style>
+        <Style Selector="Button.deck.prominent:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#E6FFFFFF" />
+            <Setter Property="Foreground" Value="Black" />
+        </Style>
+    </UserControl.Styles>
+
+    <Border x:Name="Panel" Classes.full="{Binding IsFullScreen}" IsVisible="{Binding IsActive}">
+        <Grid RowDefinitions="*,Auto">
+            <Border x:Name="Video" Background="Black" ClipToBounds="True">
+                <Panel>
+                    <!-- One view for the deck's whole life: mpv's video can't move between views. -->
+                    <ContentControl Content="{Binding Player}" IsHitTestVisible="False" Focusable="False">
+                        <ContentControl.ContentTemplate>
+                            <DataTemplate x:DataType="mpv:MpvPlayer">
+                                <c:MpvVideoView Player="{Binding}" />
+                            </DataTemplate>
+                        </ContentControl.ContentTemplate>
+                    </ContentControl>
+                    <!-- A song with no video: the show's picture in its place. -->
+                    <Panel IsVisible="{Binding ShowsArtwork}">
+                        <c:RemoteImage Url="{Binding Current.Artwork}" />
+                        <Border Width="56" Height="56" CornerRadius="28" Background="#80000000" HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <TextBlock Text="&#xE8D6;" FontFamily="{StaticResource IconFont}" FontSize="24" Foreground="White"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                    </Panel>
+                    <ProgressBar IsIndeterminate="True" Width="80" IsVisible="{Binding IsLoading}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+
+                    <!-- Full screen: the song card for its first seconds, as in the player, and the way back. -->
+                    <Panel IsVisible="{Binding ShowsCard}" IsHitTestVisible="False">
+                    <DockPanel MaxWidth="420" Margin="24,0,0,40" HorizontalAlignment="Left" VerticalAlignment="Bottom"
+                               DataContext="{Binding Current.Card}" x:DataType="anime:ThemeInfo">
+                        <DockPanel.Effect>
+                            <DropShadowEffect BlurRadius="12" OffsetX="0" OffsetY="2" Color="Black" Opacity="0.7" />
+                        </DockPanel.Effect>
+                        <Border DockPanel.Dock="Left" Width="3" CornerRadius="2" Background="White" Margin="0,0,12,0" />
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="{Binding Kicker}" FontSize="12" FontWeight="SemiBold" LetterSpacing="2.5" Foreground="#BFFFFFFF" />
+                            <TextBlock Text="{Binding Title}" FontSize="24" FontWeight="Bold" Foreground="White"
+                                       TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis" />
+                            <TextBlock Text="{Binding Artists}" FontSize="15" FontWeight="Medium" Foreground="White" TextTrimming="CharacterEllipsis"
+                                       IsVisible="{Binding Artists, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                            <TextBlock Text="{Binding Series}" FontSize="13" FontWeight="SemiBold" Foreground="#E6FFFFFF" TextTrimming="CharacterEllipsis"
+                                       IsVisible="{Binding Series, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                            <TextBlock Text="{Binding Detail}" FontSize="12" Foreground="#B3FFFFFF" TextTrimming="CharacterEllipsis"
+                                       IsVisible="{Binding Detail, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                        </StackPanel>
+                    </DockPanel>
+                    </Panel>
+                    <StackPanel Orientation="Horizontal" Spacing="10" Margin="24" HorizontalAlignment="Left" VerticalAlignment="Top" IsVisible="{Binding IsFullScreen}">
+                        <Button Classes="deck" Command="{Binding ToggleFullScreenCommand}" Content="&#xE72B;" ToolTip.Tip="Back to the panel (Esc)"
+                                AutomationProperties.Name="Leave full screen" />
+                        <Button Classes="deck" Command="{Binding TogglePlayingCommand}" ToolTip.Tip="Play/Pause (Space)" AutomationProperties.Name="Play or Pause">
+                            <Panel>
+                                <TextBlock Text="&#xE769;" IsVisible="{Binding IsPlaying}" />
+                                <TextBlock Text="&#xE768;" IsVisible="{Binding !IsPlaying}" />
+                            </Panel>
+                        </Button>
+                        <Button Classes="deck" Command="{Binding NextCommand}" Content="&#xE893;" ToolTip.Tip="Next" AutomationProperties.Name="Next" />
+                    </StackPanel>
+                </Panel>
+            </Border>
+
+            <StackPanel Grid.Row="1" Spacing="10" Margin="0,14,0,0" IsVisible="{Binding !IsFullScreen}">
+                <StackPanel Spacing="2">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <TextBlock Text="&#xE8D6;" FontFamily="{StaticResource IconFont}" FontSize="11" Foreground="{DynamicResource SystemControlHighlightAccentBrush}" VerticalAlignment="Center" />
+                        <TextBlock Text="NOW PLAYING" FontSize="11" FontWeight="SemiBold" LetterSpacing="1.5" Foreground="{DynamicResource SystemControlHighlightAccentBrush}" />
+                    </StackPanel>
+                    <TextBlock Text="{Binding Current.Title}" FontSize="17" FontWeight="Bold" TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis" />
+                    <TextBlock Text="{Binding Current.Subtitle}" FontSize="13" Foreground="{StaticResource Secondary}" TextTrimming="CharacterEllipsis"
+                               IsVisible="{Binding Current.Subtitle, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                </StackPanel>
+                <StackPanel Spacing="2">
+                    <ProgressBar Value="{Binding Progress}" Minimum="0" Maximum="100" Height="4" MinHeight="4" CornerRadius="2" />
+                    <DockPanel>
+                        <TextBlock DockPanel.Dock="Right" Text="{Binding DurationText}" FontSize="11" Foreground="{StaticResource Secondary}" />
+                        <TextBlock Text="{Binding ElapsedText}" FontSize="11" Foreground="{StaticResource Secondary}" />
+                    </DockPanel>
+                </StackPanel>
+                <DockPanel>
+                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                        <Button Classes="deck" Command="{Binding ToggleFullScreenCommand}" Content="&#xE740;" ToolTip.Tip="Full screen"
+                                AutomationProperties.Name="Full Screen" />
+                        <Button Classes="deck" Command="{Binding GoToShowCommand}" Content="&#xE76C;" ToolTip.Tip="Go to the show"
+                                AutomationProperties.Name="Go to the Show" />
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                        <Button Classes="deck" Command="{Binding PreviousCommand}" Content="&#xE892;" ToolTip.Tip="Previous" AutomationProperties.Name="Previous" />
+                        <Button Classes="deck prominent" Command="{Binding TogglePlayingCommand}" ToolTip.Tip="Play/Pause" AutomationProperties.Name="Play or Pause">
+                            <Panel>
+                                <TextBlock Text="&#xE769;" IsVisible="{Binding IsPlaying}" />
+                                <TextBlock Text="&#xE768;" IsVisible="{Binding !IsPlaying}" />
+                            </Panel>
+                        </Button>
+                        <Button Classes="deck" Command="{Binding NextCommand}" Content="&#xE893;" ToolTip.Tip="Next" AutomationProperties.Name="Next" />
+                        <Button Classes="deck" Command="{Binding StopCommand}" Content="&#xE711;" FontSize="12" ToolTip.Tip="Stop" AutomationProperties.Name="Stop" />
+                    </StackPanel>
+                </DockPanel>
+            </StackPanel>
+        </Grid>
+    </Border>
+</UserControl>

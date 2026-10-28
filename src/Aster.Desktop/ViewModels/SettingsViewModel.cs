@@ -82,6 +82,7 @@ public sealed partial class SettingsViewModel : ViewModelBase
             case nameof(ThemeMusic): ThemeMusic = !ThemeMusic; break;
             case nameof(ThemeVideos): ThemeVideos = !ThemeVideos; break;
             case nameof(OpeningSound): OpeningSound = !OpeningSound; break;
+            case nameof(ThemePanel): ThemePanel = !ThemePanel; break;
             case nameof(PreferDiscMenu): PreferDiscMenu = !PreferDiscMenu; break;
             case nameof(DiscMenuSounds): DiscMenuSounds = !DiscMenuSounds; break;
         }
@@ -116,6 +117,7 @@ public sealed partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] public partial bool ThemeMusic { get; set; }
     [ObservableProperty] public partial bool ThemeVideos { get; set; }
     [ObservableProperty] public partial bool OpeningSound { get; set; }
+    [ObservableProperty] public partial bool ThemePanel { get; set; }
     [ObservableProperty] public partial bool PreferDiscMenu { get; set; }
     [ObservableProperty] public partial bool DiscMenuSounds { get; set; }
 
@@ -132,6 +134,7 @@ public sealed partial class SettingsViewModel : ViewModelBase
     partial void OnThemeMusicChanged(bool value) => Change(s => s with { ThemeMusic = value });
     partial void OnThemeVideosChanged(bool value) => Change(s => s with { ThemeVideos = value });
     partial void OnOpeningSoundChanged(bool value) => Change(s => s with { OpeningSound = value });
+    partial void OnThemePanelChanged(bool value) => Change(s => s with { ThemePanel = value });
     partial void OnPreferDiscMenuChanged(bool value) => Change(s => s with { PreferDiscMenu = value });
     partial void OnDiscMenuSoundsChanged(bool value) => Change(s => s with { DiscMenuSounds = value });
 
@@ -157,6 +160,7 @@ public sealed partial class SettingsViewModel : ViewModelBase
         ThemeMusic = settings.ThemeMusic;
         ThemeVideos = settings.ThemeVideos;
         OpeningSound = settings.OpeningSound;
+        ThemePanel = settings.ThemePanel;
         PreferDiscMenu = settings.PreferDiscMenu;
         DiscMenuSounds = settings.DiscMenuSounds;
         showing = false;

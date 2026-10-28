@@ -46,6 +46,9 @@ public partial class App : Application
             if (System.Array.IndexOf(args, "--disc-menu") >= 0) main.OpensDiscMenu = true;
             if (System.Array.IndexOf(args, "--flick") >= 0) main.OpensChannelRow = true;
             if (System.Array.IndexOf(args, "--now-playing") >= 0) main.OpensNowPlaying = true;
+            // --play-all (with --open on an anime show): its Music tab's Play All, in the Now Playing panel; --play-all-full, full screen.
+            if (System.Array.IndexOf(args, "--play-all") >= 0) main.PlaysAll = 1;
+            if (System.Array.IndexOf(args, "--play-all-full") >= 0) main.PlaysAll = 2;
             if (System.Array.IndexOf(args, "--channel") is var ch and >= 0 && ch + 1 < args.Length && int.TryParse(args[ch + 1], out var number)) main.TuneChannelWhenLoaded(number);
 #endif
             desktop.MainWindow = new MainWindow { DataContext = main };

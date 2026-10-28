@@ -149,6 +149,9 @@
             </Border>
         </StackPanel>
 
+        <!-- The Music tab's Now Playing panel, at the top right over every page, or filling the window full screen. -->
+        <v:ThemeDeckView DataContext="{Binding Deck}" />
+
         <!-- The window's left edge: the pointer there slides the sidebar out. -->
         <Border x:Name="Edge" Width="6" HorizontalAlignment="Left" Background="Transparent" />
 

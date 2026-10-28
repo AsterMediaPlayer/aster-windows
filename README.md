@@ -122,6 +122,8 @@ These leave the saved session alone:
   `--open`) opens the title's disc menu; `--channel <number>` (with `--tab
   channels`) tunes in a Channel, and `--flick` shows the channel row once it
   plays; `--now-playing` (with `--play` on music) shows Now Playing.
+- `--play-all` (with `--open` on an anime show) presses its Music tab's Play
+  All once the cards are in; `--play-all-full` takes the panel full screen.
 - `ASTER_GAMEPAD_SCRIPT="10:down,12:a,14:b"` attaches a pretend game
   controller and presses its buttons that many seconds after starting (a,
   b, x, y, start, lb, rb, up, down, left, right; `hold-down` holds one a
@@ -219,11 +221,26 @@ picked, else one found in that season's chapters, else the show's first,
 never one marked as a spoiler or NSFW. Title Pages' "Opening plays with
 sound" gives it its sound, as quiet as theme music.
 
-Not yet: the Apple app's Now Playing
-panel (Play All and Shuffle through the openings and endings, a theme
-playing beside the page while browsing), full versions, and Watch OP and
-Watch ED. Chinese titles sort under # in the letter index; the Apple app
-files them by pinyin, which .NET has no table for.
+**Now Playing panel** (`Audio/ThemeDeck`, `Views/ThemeDeckView`): an
+opening or ending picked on a show's Music tab plays in a panel at the top
+right, then the rest after it like a playlist; **Play All** and **Shuffle**
+play them all (skipping any marked as a spoiler or NSFW). It keeps playing
+while you browse, with Previous, Play/Pause, Next, Stop and Go to the Show.
+**Full screen** grows the same panel to fill the screen, its song card in
+the corner (Esc goes back, Space pauses, the arrows skip): mpv's video can't
+move between views, so the panel's one view grows rather than handing over.
+Title-page themes go quiet while it plays; a title, a disc menu or a song
+starting ends it. Settings ▸ Title Pages ▸ Now Playing panel off plays
+picks full screen, one at a time, as before.
+
+**Watch OP** and **Watch ED** on an anime show's page play the season
+picked's opening and ending full screen, with the song card (the plugin's,
+else one found in chapters, else one of the whole show); on an episode's
+page, the ones in that episode.
+
+Not yet: full versions (a theme's full-length cut). Chinese titles sort
+under # in the letter index; the Apple app files them by pinyin, which .NET
+has no table for.
 
 ## Disc menus
 
@@ -362,8 +379,8 @@ About pages on one page, as the Mac's Settings window has them:
   minutes to 4 hours, the window in the background, minimized or closed,
   but not while a video plays), checked by the server, and forgets it.
 
-Not yet: the Channels page, and the Anime page's Now Playing panel and
-full versions, which wait on those features.
+Not yet: the Channels page, and full versions, which wait on those
+features.
 
 ## The player
 

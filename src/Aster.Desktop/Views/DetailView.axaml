@@ -150,6 +150,20 @@
                                     <TextBlock Text="From Beginning" />
                                 </StackPanel>
                             </Button>
+                            <Button Theme="{StaticResource PillButton}" Command="{Binding WatchCommand}" CommandParameter="OP" IsVisible="{Binding HasWatchOpening}"
+                                    ToolTip.Tip="The opening, full screen">
+                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                    <TextBlock Text="&#xE8D6;" FontFamily="{StaticResource IconFont}" VerticalAlignment="Center" />
+                                    <TextBlock Text="Watch OP" />
+                                </StackPanel>
+                            </Button>
+                            <Button Theme="{StaticResource PillButton}" Command="{Binding WatchCommand}" CommandParameter="ED" IsVisible="{Binding HasWatchEnding}"
+                                    ToolTip.Tip="The ending, full screen">
+                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                    <TextBlock Text="&#xE8FD;" FontFamily="{StaticResource IconFont}" VerticalAlignment="Center" />
+                                    <TextBlock Text="Watch ED" />
+                                </StackPanel>
+                            </Button>
                             <Button Theme="{StaticResource PillButton}" Command="{Binding OpenDiscMenuCommand}" IsVisible="{Binding HasDiscMenu}">
                                 <StackPanel Orientation="Horizontal" Spacing="10">
                                     <TextBlock Text="&#xE8B2;" FontFamily="{StaticResource IconFont}" VerticalAlignment="Center" />
@@ -208,6 +222,21 @@
 
                 <!-- An anime show's Music tab: its openings, then its endings. -->
                 <StackPanel Spacing="28" IsVisible="{Binding ShowsMusic}">
+                    <!-- One after another in the Now Playing panel, in the rows' order or shuffled. -->
+                    <StackPanel Orientation="Horizontal" Spacing="12" Margin="{StaticResource ScreenPadding}" IsVisible="{Binding CanPlayAll}">
+                        <Button Theme="{StaticResource PillButton}" Classes="prominent" Command="{Binding PlayAllCommand}">
+                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                <TextBlock Text="&#xE768;" FontFamily="{StaticResource IconFont}" VerticalAlignment="Center" />
+                                <TextBlock Text="Play All" />
+                            </StackPanel>
+                        </Button>
+                        <Button Theme="{StaticResource PillButton}" Command="{Binding ShuffleCommand}">
+                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                <TextBlock Text="&#xE8B1;" FontFamily="{StaticResource IconFont}" VerticalAlignment="Center" />
+                                <TextBlock Text="Shuffle" />
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
                     <c:ShelfView Title="Openings" Items="{Binding Openings}" ItemTemplate="{StaticResource OpeningEndingTemplate}" />
                     <c:ShelfView Title="Endings" Items="{Binding Endings}" ItemTemplate="{StaticResource OpeningEndingTemplate}" />
                 </StackPanel>

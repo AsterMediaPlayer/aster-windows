@@ -35,6 +35,9 @@ public interface INavigator
     /// <summary>Title pages' theme music and videos.</summary>
     Aster.Desktop.Audio.ThemePlayer Theme { get; }
 
+    /// <summary>The Music tab's openings and endings, playing in the Now Playing panel.</summary>
+    Aster.Desktop.Audio.ThemeDeck Deck { get; }
+
     /// <summary>A book's page.</summary>
     void OpenBook(Aster.Core.Audio.Audiobook book);
 
@@ -178,6 +181,7 @@ public partial class ShellViewModel : ViewModelBase, INavigator, IDisposable
         HasChannels = CheckChannelsAsync(client);
         Audio = new Aster.Desktop.Audio.AudioSession(client);
         Theme = new Aster.Desktop.Audio.ThemePlayer(client, Audio);
+        Deck = new Aster.Desktop.Audio.ThemeDeck(client, Audio, Theme, show => Open(show));
         NowPlaying = new NowPlayingViewModel(this);
         UserName = session.UserName;
         ServerName = session.ServerName ?? session.ServerUrl.Host;
@@ -201,6 +205,8 @@ public partial class ShellViewModel : ViewModelBase, INavigator, IDisposable
     public Aster.Desktop.Audio.AudioSession Audio { get; }
 
     public Aster.Desktop.Audio.ThemePlayer Theme { get; }
+
+    public Aster.Desktop.Audio.ThemeDeck Deck { get; }
 
     /// <summary>The full player for the song or book, over the window.</summary>
     public NowPlayingViewModel NowPlaying { get; }
@@ -392,7 +398,8 @@ public partial class ShellViewModel : ViewModelBase, INavigator, IDisposable
 
     public void Play(PlaybackQueueItem entry, Action<BaseItem?>? closed = null)
     {
-        // A song or book playing pauses for the video, and waits in the bar.
+        // The Now Playing panel's openings end; a song or book playing pauses for the video, and waits in the bar.
+        Deck.Stop();
         Audio.Pause();
         Theme.Suspend();
         play(entry, last =>
@@ -408,6 +415,7 @@ public partial class ShellViewModel : ViewModelBase, INavigator, IDisposable
     public void ShowDiscMenu(Aster.Core.DiscMenu.DiscMenuDocument document, string itemId, Action closed)
     {
         // As for a title: the song or book and the theme wait while the menu's up.
+        Deck.Stop();
         Audio.Pause();
         Theme.Suspend();
         showDiscMenu(document, itemId, () =>
@@ -441,6 +449,7 @@ public partial class ShellViewModel : ViewModelBase, INavigator, IDisposable
     /// <summary>Signing out: the song or book stops, its place saved, and the theme with it.</summary>
     public void Dispose()
     {
+        Deck.Dispose();
         Theme.Dispose();
         Audio.Dispose();
     }

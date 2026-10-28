@@ -24,6 +24,9 @@ public sealed record AppSettings
     /// <summary>The song card as an anime episode's opening or ending plays, and on music videos.</summary>
     public bool ThemeCards { get; init; } = true;
 
+    /// <summary>Openings and endings picked on a show's Music tab play in the Now Playing panel, one after another; off, full screen, one at a time.</summary>
+    public bool ThemePanel { get; init; } = true;
+
     /// <summary>A title's theme song, played quietly on its page.</summary>
     public bool ThemeMusic { get; init; }
 

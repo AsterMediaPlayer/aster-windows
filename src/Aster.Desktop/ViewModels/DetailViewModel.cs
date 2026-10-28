@@ -220,8 +220,13 @@ public partial class DetailViewModel : ViewModelBase, IRefreshable
     [ObservableProperty] public partial IReadOnlyList<ItemCard> Cast { get; set; } = [];
 
     /// <summary>An anime show's openings and endings, each in its own row of the Music tab.</summary>
-    [ObservableProperty] public partial IReadOnlyList<OpeningEndingCard> Openings { get; set; } = [];
-    [ObservableProperty] public partial IReadOnlyList<OpeningEndingCard> Endings { get; set; } = [];
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanPlayAll))]
+    public partial IReadOnlyList<OpeningEndingCard> Openings { get; set; } = [];
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanPlayAll))]
+    public partial IReadOnlyList<OpeningEndingCard> Endings { get; set; } = [];
 
     public bool ShowsEpisodes => UsesSections && Section == DetailSection.Episodes;
     public bool ShowsMusic => UsesSections && Section == DetailSection.Music;
@@ -275,6 +280,7 @@ public partial class DetailViewModel : ViewModelBase, IRefreshable
                     break;
                 case ItemKind.Episode when full.SeriesId is { } seriesId && full.SeasonId is { } seasonId:
                     ShowSeasonEpisodes(await OrEmpty(Client.EpisodesAsync(seriesId, seasonId)));
+                    _ = LoadEpisodeThemesAsync(full);
                     break;
             }
             if (full.Kind is ItemKind.Movie or ItemKind.Series or ItemKind.Season)
@@ -286,6 +292,13 @@ public partial class DetailViewModel : ViewModelBase, IRefreshable
             var found = await themes;
             Openings = found.Where(c => c.IsOpening).ToList();
             Endings = found.Where(c => !c.IsOpening).ToList();
+            UpdateWatchThemes();
+            if (playAllWhenReady is { } fullScreen && CanPlayAll)
+            {
+                playAllWhenReady = null;
+                PlayAll();
+                navigator.Deck.IsFullScreen = fullScreen;
+            }
             ShowOpening();
             UpdateSections();
 
@@ -348,8 +361,9 @@ public partial class DetailViewModel : ViewModelBase, IRefreshable
         SelectedSeasonId = seasonId;
         UpdateSeasonChoices();
         ShowEpisodes(await OrEmpty(Client.EpisodesAsync(seriesId, seasonId)));
-        // The opening behind the page follows the season picked.
+        // The opening behind the page, and Watch OP and Watch ED, follow the season picked.
         if (Item.Kind == ItemKind.Series) ShowOpening();
+        UpdateWatchThemes();
         // A show's menu can be its season's: follow the season picked.
         if (Item.Kind == ItemKind.Series && discMenuItemId != Item.Id) await LoadDiscMenuAsync();
     }
@@ -438,8 +452,129 @@ public partial class DetailViewModel : ViewModelBase, IRefreshable
         return clips.Select(clip => OpeningEndingCard.Clip(Client, clip, show.DisplayTitle, PlayTheme, ThemeInfo.Match(clip, known[clip.Season]))).ToList();
     }
 
-    /// <summary>An opening or ending, full screen; the page needn't follow, since nothing it shows changes.</summary>
-    private void PlayTheme(PlaybackQueueItem entry) => navigator.Play(entry);
+    /// <summary>
+    /// A card clicked: it plays in the Now Playing panel, the rest of the
+    /// rows after it; with the panel turned off, full screen (the page
+    /// needn't follow, since nothing it shows changes).
+    /// </summary>
+    private void PlayTheme(PlaybackQueueItem entry)
+    {
+        var cards = Openings.Concat(Endings).ToList();
+        if (Aster.Core.AppSettings.Current.ThemePanel && cards.FirstOrDefault(c => ReferenceEquals(c.Entry, entry))?.DeckEntry is { } chosen)
+        {
+            navigator.Deck.Play(chosen, DeckQueue(cards), Item);
+            return;
+        }
+        navigator.Play(entry);
+    }
+
+    // ---- Openings and endings: Play All, Shuffle, Watch OP and Watch ED ----
+
+    /// <summary>Everything the rows hold, in their order, as the panel plays it.</summary>
+    private static List<Aster.Desktop.Audio.ThemeDeckEntry> DeckQueue(IEnumerable<OpeningEndingCard> cards) =>
+        cards.Select(c => c.DeckEntry).OfType<Aster.Desktop.Audio.ThemeDeckEntry>().ToList();
+
+    /// <summary>Play All and Shuffle need the panel (full screen plays one at a time) and something that plays without asking.</summary>
+    public bool CanPlayAll => Aster.Core.AppSettings.Current.ThemePanel && DeckQueue(Openings.Concat(Endings)).Any(e => e.PlaysUnasked);
+
+    /// <summary>For trying the panel (<c>--play-all</c>): Play All once the rows have loaded.</summary>
+    private bool? playAllWhenReady;
+
+    public void PlayAllWhenReady(bool fullScreen) => playAllWhenReady = fullScreen;
+
+    [RelayCommand]
+    private void PlayAll()
+    {
+        var queue = DeckQueue(Openings.Concat(Endings));
+        if (queue.FirstOrDefault(e => e.PlaysUnasked) is { } first) navigator.Deck.Play(first, queue, Item);
+    }
+
+    [RelayCommand]
+    private void Shuffle()
+    {
+        var order = DeckQueue(Openings.Concat(Endings)).Where(e => e.PlaysUnasked).OrderBy(_ => Random.Shared.Next()).ToList();
+        if (order.Count > 0) navigator.Deck.Play(order[0], order, Item);
+    }
+
+    /// <summary>What Watch OP and Watch ED play: on a show's page the season picked's, on an episode's the ones in it.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasWatchOpening))]
+    public partial OpeningEndingCard? WatchOpening { get; private set; }
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasWatchEnding))]
+    public partial OpeningEndingCard? WatchEnding { get; private set; }
+
+    public bool HasWatchOpening => WatchOpening is not null;
+    public bool HasWatchEnding => WatchEnding is not null;
+
+    /// <summary>Full screen, its song card in the corner, as the Apple app's Watch OP opens in the player.</summary>
+    [RelayCommand]
+    private void Watch(string which)
+    {
+        if ((which == "ED" ? WatchEnding : WatchOpening)?.Entry is { } entry) navigator.Play(entry);
+    }
+
+    /// <summary>
+    /// A show's page: the season picked's theme (the plugin's, or a clip
+    /// found in its chapters), else one of the whole show, else the first.
+    /// Spoilers and NSFW are left out, as they ask before they play.
+    /// </summary>
+    private void UpdateWatchThemes()
+    {
+        if (Item.Kind != ItemKind.Series) return;
+        var number = seasons.FirstOrDefault(s => s.Id == SelectedSeasonId)?.IndexNumber;
+        WatchOpening = WatchPick(Openings, number);
+        WatchEnding = WatchPick(Endings, number);
+    }
+
+    private OpeningEndingCard? WatchPick(IEnumerable<OpeningEndingCard> cards, int? seasonNumber)
+    {
+        var playable = cards.Where(c => c.CanPlay && !c.IsFlagged).ToList();
+        var season = playable.Where(c => (c.SeasonId is not null && c.SeasonId == SelectedSeasonId)
+            || (c.SeasonNumber is not null && c.SeasonNumber == seasonNumber)).ToList();
+        var whole = playable.Where(c => c.SeasonId is null && c.SeasonNumber is null).ToList();
+        var pool = season.Count > 0 ? season : whole.Count > 0 ? whole : playable;
+        // A music video before a song alone.
+        return pool.FirstOrDefault(c => !c.IsAudioOnly) ?? pool.FirstOrDefault();
+    }
+
+    /// <summary>
+    /// An anime episode's page: the plugin's theme that plays in it (then
+    /// its season's, then one of the whole show), else the episode's own OP
+    /// and ED chapters, named from AnimeThemes.
+    /// </summary>
+    private async Task LoadEpisodeThemesAsync(BaseItem episode)
+    {
+        if (episode.SeriesId is not { } seriesId || !(await navigator.Anime).ItemIds.Contains(seriesId)) return;
+        var series = episode.SeriesName ?? episode.DisplayTitle;
+        var show = new BaseItem { Id = seriesId, Name = series, Type = "Series" };
+        var found = new List<OpeningEndingCard>();
+        try
+        {
+            if (Client is JellyfinClient jellyfin && jellyfin.Can(ServerCapabilities.Plugins))
+            {
+                var themes = (await jellyfin.OpEdThemesAsync(episode.Id) ?? []).Where(t => t.PlayablePath is not null && !t.Spoiler && !t.Nsfw).ToList();
+                foreach (var opening in new[] { true, false })
+                {
+                    var candidates = themes.Where(t => t.IsOpening == opening).ToList();
+                    var pick = candidates.FirstOrDefault(t => t.PlaysInEpisode == true)
+                        ?? candidates.FirstOrDefault(t => t.SeasonId is not null && t.SeasonId == episode.SeasonId)
+                        ?? candidates.Where(t => t.SeasonId is null).MinBy(t => t.Sequence);
+                    if (pick is not null) found.Add(OpeningEndingCard.Theme(jellyfin, pick, show, episode.SeasonName, -1, PlayTheme));
+                }
+            }
+            if (found.Count == 0 && OpeningsEndings.Find([episode]) is { Count: > 0 } clips)
+            {
+                var known = await AnimeThemesLookup.ForEpisodeAsync(episode, Client);
+                found.AddRange(clips.Select(clip => OpeningEndingCard.Clip(Client, clip, series, PlayTheme, ThemeInfo.Match(clip, known))));
+            }
+        }
+        catch (Exception error) when (IsServerError(error)) { return; }
+        if (Item.Id != episode.Id) return;
+        WatchOpening = found.FirstOrDefault(c => c.IsOpening && c.CanPlay);
+        WatchEnding = found.FirstOrDefault(c => !c.IsOpening && c.CanPlay);
+    }
 
     private void UpdateSeasonChoices() =>
         Seasons = seasons.Count > 1

@@ -1,7 +1,7 @@
 // A card in an anime show's Openings and Endings rows: a theme from the
 // OP/ED plugin, or a clip found in an episode's chapters. A port of the
-// Apple app's ThemeCard and ThemeClipLockup, as they play with the Now
-// Playing panel turned off: one at a time, full screen.
+// Apple app's ThemeCard and ThemeClipLockup: a click plays it in the Now
+// Playing panel, or with the panel turned off, full screen.
 
 using System;
 using System.Linq;
@@ -26,6 +26,19 @@ public partial class OpeningEndingCard : ObservableObject
     }
 
     public bool IsOpening { get; private init; }
+
+    /// <summary>What it plays, full screen or in the Now Playing panel; null while it's still being made.</summary>
+    public PlaybackQueueItem? Entry => entry;
+
+    /// <summary>A plugin theme's season (null for one of the whole show).</summary>
+    public string? SeasonId { get; private init; }
+
+    /// <summary>A clip's season number.</summary>
+    public int? SeasonNumber { get; private init; }
+
+    /// <summary>As the Now Playing panel plays it; null when there's nothing to play yet.</summary>
+    public Aster.Desktop.Audio.ThemeDeckEntry? DeckEntry => entry is null ? null : new(
+        $"{entry.ItemId}-{entry.StartTicks}", entry, Title, Artists ?? Detail, entry.ThemeCard, Image, HasVideo: !IsAudioOnly, PlaysUnasked: !IsFlagged);
 
     /// <summary>The theme's season, place and version, for putting the row in the show's order.</summary>
     public (int Season, int Sequence, int Version) Order { get; private init; }
@@ -101,6 +114,7 @@ public partial class OpeningEndingCard : ObservableObject
         return new OpeningEndingCard(play, entry)
         {
             IsOpening = theme.IsOpening,
+            SeasonId = theme.SeasonId,
             Order = (seasonOrder, theme.Sequence, theme.Version),
             Badge = badge,
             Title = theme.SongTitle ?? badge,
@@ -129,6 +143,7 @@ public partial class OpeningEndingCard : ObservableObject
         })
         {
             IsOpening = clip.Kind == ThemeKind.Opening,
+            SeasonNumber = clip.Season,
             Length = $"{clip.Duration / 60}:{clip.Duration % 60:00}",
             Title = song?.SongTitle ?? clip.Title,
             Artists = song is { Artists.Count: > 0 } ? string.Join(", ", song.Artists) : null,
