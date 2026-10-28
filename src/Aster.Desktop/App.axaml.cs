@@ -40,8 +40,19 @@ public partial class App : Application
 #if DEBUG
             // --plex-sign-in: straight to Plex's sign-in, for trying it.
             if (System.Array.IndexOf(args, "--plex-sign-in") >= 0) main.ShowPlexSignIn();
+            // For screenshots: --disc-menu opens the --open title's disc menu;
+            // --channel <number> tunes in a Channel (with --tab channels), and
+            // --flick shows the channel row once it plays.
+            if (System.Array.IndexOf(args, "--disc-menu") >= 0) main.OpensDiscMenu = true;
+            if (System.Array.IndexOf(args, "--flick") >= 0) main.OpensChannelRow = true;
+            if (System.Array.IndexOf(args, "--now-playing") >= 0) main.OpensNowPlaying = true;
+            if (System.Array.IndexOf(args, "--channel") is var ch and >= 0 && ch + 1 < args.Length && int.TryParse(args[ch + 1], out var number)) main.TuneChannelWhenLoaded(number);
 #endif
             desktop.MainWindow = new MainWindow { DataContext = main };
+#if DEBUG
+            // --full-screen: the window starts full screen, as for screenshots.
+            if (System.Array.IndexOf(args, "--full-screen") >= 0) Aster.Desktop.Controls.FullScreen.Toggle(desktop.MainWindow);
+#endif
             // Game controllers, as the keys.
             var gamepads = Aster.Desktop.Input.Gamepads.Start(desktop.MainWindow);
             desktop.ShutdownRequested += (_, _) =>

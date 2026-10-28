@@ -219,6 +219,11 @@ public partial class PlayerViewModel : ViewModelBase
     /// <summary>The row closes itself after a while left alone.</summary>
     private readonly DispatcherTimer flickTimer = new() { Interval = TimeSpan.FromSeconds(8) };
 
+    private bool flickWhenStarted;
+
+    /// <summary>For screenshots (<c>--flick</c>): the row opens once playing.</summary>
+    public void OpenFlickWhenStarted() => flickWhenStarted = true;
+
     /// <summary>Opens the row on the channel playing; false when this isn't a channel.</summary>
     public bool OpenFlick()
     {
@@ -765,6 +770,8 @@ public partial class PlayerViewModel : ViewModelBase
         RefreshChoices();
         PokeControls();
         VideoAspect = Player.GetDouble("video-params/aspect") ?? 0;
+        // After the controls showed, which the row takes the place of.
+        if (flickWhenStarted && OpenFlick()) flickWhenStarted = false;
         if (!Reports)
         {
             timedTimer.Start();

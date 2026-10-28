@@ -267,11 +267,13 @@ public partial class MainViewModel : ViewModelBase, IServerAccounts
     /// <summary>Plays over everything; closing comes back to the page it was played from.</summary>
     private void Play(IMediaServer server, PlaybackQueueItem entry, Action<BaseItem?>? closed)
     {
-        CurrentPage = new PlayerViewModel(server, entry, last =>
+        var player = new PlayerViewModel(server, entry, last =>
         {
             CurrentPage = shell;
             closed?.Invoke(last);
         });
+        if (OpensChannelRow) player.OpenFlickWhenStarted();
+        CurrentPage = player;
     }
 
     /// <summary>
@@ -299,6 +301,23 @@ public partial class MainViewModel : ViewModelBase, IServerAccounts
     }
 
     /// <summary>Opens a page for <c>--open</c>: looked up first, so a library or person opens as one would from a card.</summary>
+    /// <summary>For screenshots (<c>--disc-menu</c>): the <c>--open</c> title's disc menu opens once it's known.</summary>
+    public bool OpensDiscMenu { get; set; }
+
+    /// <summary>For screenshots (<c>--now-playing</c>): music played with <c>--play</c> shows Now Playing.</summary>
+    public bool OpensNowPlaying { get; set; }
+
+    /// <summary>For screenshots (<c>--flick</c>): a channel's row shows once it plays.</summary>
+    public bool OpensChannelRow { get; set; }
+
+    /// <summary>For screenshots (<c>--channel 2</c>): tunes in the Channel with that number once the Channels tab has them.</summary>
+    public async void TuneChannelWhenLoaded(int number)
+    {
+        if (shell?.CurrentPage is not ChannelsViewModel channels) return;
+        await channels.Loaded;
+        if (Aster.Core.Channels.ChannelTuner.OrderedChannels.FirstOrDefault(c => c.Number == number) is { } channel) channels.PlayChannel(channel.Id);
+    }
+
     /// <param name="section">A tab of the title's page to show once it has something in it (<c>--section music</c>).</param>
     private async Task OpenByIdAsync(IMediaServer client, string itemId, string? section)
     {
@@ -306,6 +325,7 @@ public partial class MainViewModel : ViewModelBase, IServerAccounts
         {
             shell?.Open(await client.ItemAsync(itemId));
             if (section is not null && shell?.CurrentPage is DetailViewModel page) page.ShowSectionWhenReady(section);
+            if (OpensDiscMenu && shell?.CurrentPage is DetailViewModel titled) titled.OpenDiscMenuWhenReady();
         }
         catch (Exception error) when (error is JellyfinException or System.Net.Http.HttpRequestException) { }
     }
@@ -324,6 +344,7 @@ public partial class MainViewModel : ViewModelBase, IServerAccounts
             {
                 var tracks = item.Kind == ItemKind.Audio ? [item] : await music.AlbumTracksAsync(item.Id);
                 open.Audio.Music.Play(tracks, 0, shuffled: false, music);
+                if (OpensNowPlaying) open.Audio.IsNowPlayingShown = true;
                 return;
             }
             if (shell is { } books && client is JellyfinClient library && item.Kind == ItemKind.AudioBook)

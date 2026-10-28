@@ -477,6 +477,22 @@ public partial class DetailViewModel : ViewModelBase, IRefreshable
 
     [RelayCommand] private void PlayFromBeginning() => Play(fromBeginning: true);
 
+    private bool discMenuWhenReady;
+
+    /// <summary>For screenshots (<c>--disc-menu</c>): the disc menu opens once it's known.</summary>
+    public void OpenDiscMenuWhenReady()
+    {
+        if (DiscMenu is not null) OpenDiscMenu();
+        else discMenuWhenReady = true;
+    }
+
+    partial void OnDiscMenuChanged(Aster.Core.DiscMenu.DiscMenuDocument? value)
+    {
+        if (value is null || !discMenuWhenReady) return;
+        discMenuWhenReady = false;
+        OpenDiscMenu();
+    }
+
     /// <summary>The title's disc menu, like putting in the disc.</summary>
     [RelayCommand]
     private void OpenDiscMenu()

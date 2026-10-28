@@ -1,9 +1,29 @@
+<p align="center">
+  <img src="docs/screenshots/home.jpg" alt="Aster for Windows Home screen" width="100%">
+</p>
+
 # Aster for Windows
 
 An Avalonia port of Aster Media Player, for Windows and Linux, in progress.
 The Apple app ([Aster-Media-Player](https://github.com/AsterMediaPlayer/Aster-Media-Player)) is the reference:
 `Aster.Core` ports its `Jellyfin/` layer file by file, so keep the two in
 step when either changes.
+
+## Screenshots
+
+Taken on Windows 11, full screen at 1920×1080, from a demo Jellyfin server
+of open-licensed films, shows, music and audiobooks.
+
+| | |
+| --- | --- |
+| ![Home](docs/screenshots/home.jpg) | ![Title page](docs/screenshots/detail.jpg) |
+| **Home**: featured banner, Continue Watching, Up Next, recently added | **Title page**: full-bleed art, episodes, related titles and details |
+| ![Player](docs/screenshots/player.jpg) | ![Disc menu](docs/screenshots/disc-menu.jpg) |
+| **Player**: mpv plays the original file, with every audio and subtitle track | **Disc menus**: JellyDisc menus with transitions and sounds |
+| ![Channels](docs/screenshots/channels.jpg) | ![Channel row](docs/screenshots/channel-row.jpg) |
+| **Channels (Beta)**: playlists as TV channels, in one guide | **Channel row**: flick through channels while watching, or Go to Movie |
+| ![Music](docs/screenshots/music.jpg) | ![Audiobooks](docs/screenshots/audiobooks.jpg) |
+| **Music**: Now Playing, with what's up next | **Audiobooks**: books with their chapters, at any speed |
 
 | Project | What it is |
 | --- | --- |
@@ -78,6 +98,10 @@ These leave the saved session alone:
 - `ASTER_LOG=<file>` writes the app's and mpv's messages to a file:
   which stream was chosen, the track mapping, the decoder, dropped frames.
 - `ASTER_MUTE=1` mutes mpv (video, music and books), for trying playback without the sound.
+- For screenshots: `--full-screen` starts full screen; `--disc-menu` (with
+  `--open`) opens the title's disc menu; `--channel <number>` (with `--tab
+  channels`) tunes in a Channel, and `--flick` shows the channel row once it
+  plays; `--now-playing` (with `--play` on music) shows Now Playing.
 - `ASTER_GAMEPAD_SCRIPT="10:down,12:a,14:b"` attaches a pretend game
   controller and presses its buttons that many seconds after starting (a,
   b, x, y, start, lb, rb, up, down, left, right; `hold-down` holds one a
