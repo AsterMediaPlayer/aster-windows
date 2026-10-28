@@ -199,7 +199,11 @@ public sealed partial class NowPlayingViewModel : ObservableObject
             listedChapter = Books.CurrentChapter?.Id;
             Chapters = book.Chapters
                 .Select(c => new ChapterRow(c, MusicFormat.Clock(book.OffsetOfPart(c.Part) + c.Start), c.Id == listedChapter,
-                    new RelayCommand(() => Books.JumpTo(c))))
+                    new RelayCommand(() =>
+                    {
+                        Audio.Sleep.MovedByHand();
+                        Books.JumpTo(c);
+                    })))
                 .ToList();
         }
     }
@@ -207,14 +211,37 @@ public sealed partial class NowPlayingViewModel : ObservableObject
     [RelayCommand] private void ToggleChapters() => ShowChapters = !ShowChapters;
     [RelayCommand] private void BackFifteen() => Books.Skip(-AudiobookPlayer.SkipBackSeconds);
     [RelayCommand] private void AheadThirty() => Books.Skip(AudiobookPlayer.SkipForwardSeconds);
-    [RelayCommand] private void PreviousChapter() => Books.PreviousChapter();
-    [RelayCommand] private void NextChapter() => Books.NextChapter();
+    // Skips by hand aren't a song's or chapter's end, for the sleep timer.
+    [RelayCommand]
+    private void PreviousChapter()
+    {
+        Audio.Sleep.MovedByHand();
+        Books.PreviousChapter();
+    }
+
+    [RelayCommand]
+    private void NextChapter()
+    {
+        Audio.Sleep.MovedByHand();
+        Books.NextChapter();
+    }
 
     // ---- Both ----
 
     [RelayCommand] private void Toggle() => Audio.Toggle();
-    [RelayCommand] private void Previous() => Music.Previous();
-    [RelayCommand] private void Next() => Music.Next();
+    [RelayCommand]
+    private void Previous()
+    {
+        Audio.Sleep.MovedByHand();
+        Music.Previous();
+    }
+
+    [RelayCommand]
+    private void Next()
+    {
+        Audio.Sleep.MovedByHand();
+        Music.Next();
+    }
     [RelayCommand] private void Shuffle() => Music.ToggleShuffle();
     [RelayCommand] private void Repeat() => Music.CycleRepeat();
     [RelayCommand] private void Close() => Audio.IsNowPlayingShown = false;

@@ -482,7 +482,13 @@ album or playlist page (every song on it), and an anime show's Music tab
 playlist or adds to one of the user's of that kind (music or video), then
 goes back. Jellyfin and Emby only: Plex's playlists differ.
 
-Not yet: downloads, and the sleep timer.
+**Sleep timer** (`Audio/SleepTimer`, not in the Apple app): Now Playing's
+clock button pauses the song or book after 15, 30, 45 or 60 minutes, or at
+the end of the song or chapter playing, counting down on the button. Its
+place is kept as with any pause. Skipping by hand (Next, Previous, a chapter
+picked) isn't an end; stopping, or Off, ends the timer.
+
+Not yet: downloads.
 
 ## Plex
 

@@ -95,6 +95,26 @@
                         </Button>
                         <Button Classes="control" Command="{Binding NextCommand}" AutomationProperties.Name="Next" Content="&#xE893;" ToolTip.Tip="Next" />
                         <Button Classes="control" Classes.active="{Binding RepeatOn}" Command="{Binding RepeatCommand}" Content="{Binding RepeatGlyph}" ToolTip.Tip="Repeat" />
+                        <Button Classes="control" Classes.active="{Binding Audio.Sleep.IsSet}" MinWidth="52" CornerRadius="26" Padding="14,0"
+                                AutomationProperties.Name="Sleep timer" ToolTip.Tip="{Binding Audio.Sleep.Tip}">
+                            <Panel>
+                                <TextBlock Text="&#xE823;" IsVisible="{Binding !Audio.Sleep.IsSet}" HorizontalAlignment="Center" />
+                                <TextBlock Text="{Binding Audio.Sleep.Label}" IsVisible="{Binding Audio.Sleep.IsSet}"
+                                           FontFamily="{StaticResource ContentControlThemeFontFamily}" FontSize="15" FontWeight="SemiBold" />
+                            </Panel>
+                            <Button.Flyout>
+                                <MenuFlyout ItemsSource="{Binding Audio.Sleep.Choices}">
+                                    <MenuFlyout.ItemContainerTheme>
+                                        <ControlTheme TargetType="MenuItem" BasedOn="{StaticResource {x:Type MenuItem}}" x:DataType="vm:SpeedChoice">
+                                            <Setter Property="Header" Value="{Binding Title}" />
+                                            <Setter Property="Command" Value="{Binding Select}" />
+                                            <Setter Property="ToggleType" Value="Radio" />
+                                            <Setter Property="IsChecked" Value="{Binding IsSelected, Mode=OneWay}" />
+                                        </ControlTheme>
+                                    </MenuFlyout.ItemContainerTheme>
+                                </MenuFlyout>
+                            </Button.Flyout>
+                        </Button>
                         <Button Classes="control" Classes.active="{Binding ShowLyrics}" AutomationProperties.Name="Lyrics" Command="{Binding ToggleLyricsCommand}" Content="&#xE8BD;"
                                 ToolTip.Tip="Lyrics" IsVisible="{Binding HasLyrics}" />
                     </StackPanel>
@@ -166,6 +186,26 @@
                             Content="{Binding RateLabel}" ToolTip.Tip="Speed">
                         <Button.Flyout>
                             <MenuFlyout ItemsSource="{Binding Speeds}">
+                                <MenuFlyout.ItemContainerTheme>
+                                    <ControlTheme TargetType="MenuItem" BasedOn="{StaticResource {x:Type MenuItem}}" x:DataType="vm:SpeedChoice">
+                                        <Setter Property="Header" Value="{Binding Title}" />
+                                        <Setter Property="Command" Value="{Binding Select}" />
+                                        <Setter Property="ToggleType" Value="Radio" />
+                                        <Setter Property="IsChecked" Value="{Binding IsSelected, Mode=OneWay}" />
+                                    </ControlTheme>
+                                </MenuFlyout.ItemContainerTheme>
+                            </MenuFlyout>
+                        </Button.Flyout>
+                    </Button>
+                    <Button Classes="control" Classes.active="{Binding Audio.Sleep.IsSet}" MinWidth="52" CornerRadius="26" Padding="14,0"
+                            AutomationProperties.Name="Sleep timer" ToolTip.Tip="{Binding Audio.Sleep.Tip}">
+                        <Panel>
+                            <TextBlock Text="&#xE823;" IsVisible="{Binding !Audio.Sleep.IsSet}" HorizontalAlignment="Center" />
+                            <TextBlock Text="{Binding Audio.Sleep.Label}" IsVisible="{Binding Audio.Sleep.IsSet}"
+                                       FontFamily="{StaticResource ContentControlThemeFontFamily}" FontSize="15" FontWeight="SemiBold" />
+                        </Panel>
+                        <Button.Flyout>
+                            <MenuFlyout ItemsSource="{Binding Audio.Sleep.Choices}">
                                 <MenuFlyout.ItemContainerTheme>
                                     <ControlTheme TargetType="MenuItem" BasedOn="{StaticResource {x:Type MenuItem}}" x:DataType="vm:SpeedChoice">
                                         <Setter Property="Header" Value="{Binding Title}" />

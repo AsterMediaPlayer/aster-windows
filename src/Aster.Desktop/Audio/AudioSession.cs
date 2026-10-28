@@ -27,7 +27,11 @@ public sealed partial class AudioSession : ObservableObject, IDisposable
         Books.Starting += () => Music.Stop();
         Music.PropertyChanged += Changed;
         Books.PropertyChanged += Changed;
+        Sleep = new SleepTimer(this);
     }
+
+    /// <summary>Pauses the song or book after a while, or at the end of the song or chapter.</summary>
+    public SleepTimer Sleep { get; }
 
     // ---- The system's media controls ----
 
