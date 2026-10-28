@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Aster.Core.Jellyfin;
 using Aster.Core.Playback;
+using Aster.Core.Server;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
@@ -12,7 +13,15 @@ namespace Aster.Desktop.ViewModels;
 /// <summary>What pages ask of the app: open a title, go back, play.</summary>
 public interface INavigator
 {
-    JellyfinClient Client { get; }
+    /// <summary>The server signed in to, whichever kind it is.</summary>
+    IMediaServer Client { get; }
+
+    /// <summary>
+    /// The same server when it's Jellyfin or Emby, for what only they have
+    /// (music, audiobooks, Live TV, channels, playlists, the plugins); null
+    /// on another kind, where those pages aren't offered.
+    /// </summary>
+    JellyfinClient? Jellyfin { get; }
 
     /// <summary>Which libraries hold anime, found once per sign-in.</summary>
     Task<AnimeCatalog> Anime { get; }
@@ -62,6 +71,19 @@ public interface INavigator
 
     /// <summary>The server turned the session away (401): back to sign-in.</summary>
     Task SessionExpiredAsync();
+}
+
+public static class NavigatorExtensions
+{
+    extension(INavigator navigator)
+    {
+        /// <summary>
+        /// The Jellyfin (or Emby) server, for the pages only those have:
+        /// music, audiobooks, Live TV, channels and Upcoming, which another
+        /// kind of server never offers.
+        /// </summary>
+        public JellyfinClient JellyfinOnly => navigator.Jellyfin ?? throw new InvalidOperationException("Only Jellyfin and Emby servers have this page");
+    }
 }
 
 /// <summary>A page that freshens what it shows when it comes back into view.</summary>
@@ -139,7 +161,7 @@ public partial class ShellViewModel : ViewModelBase, INavigator, IDisposable
 
     /// <param name="signOut">Signs out, saying why.</param>
     /// <param name="showDiscMenu">Shows a disc menu over the window, calling back as it closes.</param>
-    public ShellViewModel(JellyfinClient client, StoredSession session, Action<PlaybackQueueItem, Action<BaseItem?>?> play,
+    public ShellViewModel(IMediaServer client, StoredSession session, Action<PlaybackQueueItem, Action<BaseItem?>?> play,
         Action<Aster.Core.DiscMenu.DiscMenuDocument, string, Action> showDiscMenu, Func<SignOutKind, Task> signOut, IServerAccounts accounts)
     {
         this.accounts = accounts;
@@ -166,10 +188,11 @@ public partial class ShellViewModel : ViewModelBase, INavigator, IDisposable
         _ = HasUpcoming.ContinueWith(_ => Avalonia.Threading.Dispatcher.UIThread.Post(UpdateTabs));
         _ = HasChannels.ContinueWith(_ => Avalonia.Threading.Dispatcher.UIThread.Post(UpdateTabs));
         // The settings that follow the user, as their other devices left them.
-        _ = Aster.Core.SettingsSync.PullAsync(client);
+        if (client is JellyfinClient jellyfin && jellyfin.Can(ServerCapabilities.SettingsSync)) _ = Aster.Core.SettingsSync.PullAsync(jellyfin);
     }
 
-    public JellyfinClient Client { get; }
+    public IMediaServer Client { get; }
+    public JellyfinClient? Jellyfin => Client as JellyfinClient;
     public Task<AnimeCatalog> Anime { get; }
     public Task<IReadOnlyList<BaseItem>> Libraries { get; }
     public Aster.Desktop.Audio.AudioSession Audio { get; }
@@ -185,21 +208,22 @@ public partial class ShellViewModel : ViewModelBase, INavigator, IDisposable
     /// <summary>Whether any video playlist is tagged as a Channel, which the Channels tab needs.</summary>
     private Task<bool> HasChannels { get; }
 
-    private static async Task<bool> CheckChannelsAsync(JellyfinClient client)
+    private static async Task<bool> CheckChannelsAsync(IMediaServer server)
     {
         // Channels are playlist tags in Jellyfin's shape; Emby's differ.
-        if (!client.IsJellyfin) return false;
+        if (server is not JellyfinClient { IsJellyfin: true } client) return false;
         try { return Aster.Core.Channels.ChannelLoader.TaggedChannels(await client.PlaylistsAsync("Video")).Count > 0; }
         catch (Exception error) when (error is JellyfinException or System.Net.Http.HttpRequestException or TimeoutException) { return false; }
     }
 
-    private static async Task<bool> CheckUpcomingAsync(JellyfinClient client)
+    private static async Task<bool> CheckUpcomingAsync(IMediaServer server)
     {
+        if (server is not JellyfinClient client || !client.Can(ServerCapabilities.Upcoming)) return false;
         try { return (await client.UpcomingAsync(limit: 1)).Count > 0; }
         catch (Exception error) when (error is JellyfinException or System.Net.Http.HttpRequestException or TimeoutException) { return false; }
     }
 
-    private static async Task<IReadOnlyList<BaseItem>> LoadLibrariesAsync(JellyfinClient client)
+    private static async Task<IReadOnlyList<BaseItem>> LoadLibrariesAsync(IMediaServer client)
     {
         try { return await client.UserViewsAsync(); }
         catch (Exception error) when (error is JellyfinException or System.Net.Http.HttpRequestException or TimeoutException) { return []; }

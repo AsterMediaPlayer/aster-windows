@@ -57,7 +57,7 @@ public sealed partial class SeriesTimerViewModel : ViewModelBase
     {
         try
         {
-            var loaded = await navigator.Client.SeriesTimerAsync(ruleId);
+            var loaded = await navigator.JellyfinOnly.SeriesTimerAsync(ruleId);
             rule = loaded;
             Title = loaded.Name ?? "Series Recording";
             ChannelName = loaded.ChannelName;
@@ -96,11 +96,11 @@ public sealed partial class SeriesTimerViewModel : ViewModelBase
             PrePaddingSeconds = StartEarly?.Value ?? rule.PrePaddingSeconds,
             PostPaddingSeconds = EndLate?.Value ?? rule.PostPaddingSeconds,
         };
-        await PerformAsync(() => navigator.Client.UpdateSeriesTimerAsync(updated));
+        await PerformAsync(() => navigator.JellyfinOnly.UpdateSeriesTimerAsync(updated));
     }
 
     [RelayCommand]
-    private Task CancelSeries() => PerformAsync(() => navigator.Client.CancelSeriesTimerAsync(ruleId));
+    private Task CancelSeries() => PerformAsync(() => navigator.JellyfinOnly.CancelSeriesTimerAsync(ruleId));
 
     [RelayCommand] private void Back() => navigator.Back();
 

@@ -4,6 +4,7 @@ using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
 using Aster.Core.Jellyfin;
+using Aster.Core.Server;
 
 namespace Aster.Desktop.ViewModels;
 
@@ -19,14 +20,16 @@ public sealed record AnimeCatalog(IReadOnlyList<BaseItem> Libraries, IReadOnlySe
 
     public bool HasAnime => Libraries.Count > 0;
 
-    public static async Task<AnimeCatalog> FindAsync(JellyfinClient client)
+    public static async Task<AnimeCatalog> FindAsync(IMediaServer client)
     {
         try
         {
             var views = await client.UserViewsAsync();
             var libraries = await client.AnimeLibrariesAsync(views);
             var ids = client.ItemIdsAsync(libraries.Select(l => l.Id), "Series,Movie");
-            var opEd = (await client.OpEdLibrariesAsync())?.VideosLibraryId is { } videos ? PlainId(videos) : null;
+            // The OP/ED plugin's music videos, on Jellyfin.
+            var opEd = client is JellyfinClient jellyfin && jellyfin.Can(ServerCapabilities.Plugins)
+                && (await jellyfin.OpEdLibrariesAsync())?.VideosLibraryId is { } videos ? PlainId(videos) : null;
             var musicVideos = views.Where(v => v.CollectionType == "musicvideos" && PlainId(v.Id) == opEd).ToList();
             return new AnimeCatalog(libraries, await ids, musicVideos);
         }
@@ -44,7 +47,7 @@ public sealed record AnimeCatalog(IReadOnlyList<BaseItem> Libraries, IReadOnlySe
     /// shelf and the Anime tab. Jellyfin reports a season when new episodes
     /// land in it; its series is shown instead, and each show once.
     /// </summary>
-    public static async Task<IReadOnlyList<BaseItem>> RecentlyAddedAsync(JellyfinClient client, IReadOnlyList<BaseItem> libraries, int limit = 20)
+    public static async Task<IReadOnlyList<BaseItem>> RecentlyAddedAsync(IMediaServer client, IReadOnlyList<BaseItem> libraries, int limit = 20)
     {
         var all = (await Task.WhenAll(libraries.Select(l => OrEmpty(client.LatestAsync(l.Id, limit))))).SelectMany(x => x);
         var newest = all.OrderByDescending(i => i.DateCreated ?? "", StringComparer.Ordinal).ToList();
@@ -54,7 +57,7 @@ public sealed record AnimeCatalog(IReadOnlyList<BaseItem> Libraries, IReadOnlySe
         {
             try
             {
-                foreach (var found in (await client.ItemsAsync(new() { ["ids"] = string.Join(',', seriesIds) })).Items) series.TryAdd(found.Id, found);
+                foreach (var found in (await client.ItemsAsync(new ItemQuery { Ids = seriesIds })).Items) series.TryAdd(found.Id, found);
             }
             catch (Exception error) when (error is JellyfinException or HttpRequestException or TimeoutException) { }
         }

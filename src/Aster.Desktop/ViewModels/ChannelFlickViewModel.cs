@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Aster.Core.Channels;
 using Aster.Core.Jellyfin;
 using Aster.Core.LiveTV;
+using Aster.Core.Server;
 using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Aster.Desktop.ViewModels;

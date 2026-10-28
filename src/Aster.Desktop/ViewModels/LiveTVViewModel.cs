@@ -7,6 +7,7 @@ using Aster.Core.Channels;
 using Aster.Core.Jellyfin;
 using Aster.Core.LiveTV;
 using Aster.Core.Playback;
+using Aster.Core.Server;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
@@ -130,7 +131,7 @@ public sealed partial class LiveTVViewModel : ViewModelBase, IRefreshable, IGuid
         Show(Section.OnNow);
     }
 
-    public JellyfinClient Client => navigator.Client;
+    public JellyfinClient Client => navigator.JellyfinOnly;
 
     // ---- What the sections share ----
 

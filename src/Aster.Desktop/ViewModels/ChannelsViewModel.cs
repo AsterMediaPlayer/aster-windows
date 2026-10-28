@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Aster.Core.Channels;
 using Aster.Core.Jellyfin;
+using Aster.Core.Server;
 using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Aster.Desktop.ViewModels;
@@ -44,8 +45,8 @@ public sealed partial class ChannelsViewModel : ViewModelBase, IGuideSource, IRe
         try
         {
             // Channels can be kept to some users (aster:user=), by name.
-            var userName = (await navigator.Client.MeAsync()).Name;
-            channels = await loader.LoadAsync(navigator.Client, userName);
+            var userName = (await navigator.JellyfinOnly.MeAsync()).Name;
+            channels = await loader.LoadAsync(navigator.JellyfinOnly, userName);
             // By group once channels have them (aster:group=), as loading put them.
             grouping = ChannelTuner.Grouping;
             error = null;
@@ -85,7 +86,7 @@ public sealed partial class ChannelsViewModel : ViewModelBase, IGuideSource, IRe
     /// <summary>A guide channel per playlist channel, its logo when it shows one (its series' clear logo, or the playlist's picture).</summary>
     public IReadOnlyList<GuideChannel> GuideChannels => channels
         .Select(c => new GuideChannel(c.Id, c.Number.ToString(System.Globalization.CultureInfo.InvariantCulture), c.Name,
-            c.ShowsLogo ? c.LogoUrl(navigator.Client, 200) : null, IsFavorite: false))
+            c.ShowsLogo ? c.LogoUrl(navigator.JellyfinOnly, 200) : null, IsFavorite: false))
         .ToList();
 
     public TimeSpan GuideLength => TimeSpan.FromDays(Days);
@@ -133,7 +134,7 @@ public sealed partial class ChannelsViewModel : ViewModelBase, IGuideSource, IRe
     {
         ScheduledProgram? found;
         lock (scheduled) found = scheduled.GetValueOrDefault(program.Id);
-        return found is null ? null : navigator.Client.LandscapeUrl(found.Item, width: 400);
+        return found is null ? null : navigator.JellyfinOnly.LandscapeUrl(found.Item, width: 400);
     }
 
     /// <summary>What's on now tunes in; anything later opens its page.</summary>

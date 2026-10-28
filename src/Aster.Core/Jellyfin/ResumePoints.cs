@@ -12,6 +12,8 @@
 // one under five minutes long, and past 90% it's left to the server, which
 // counts it watched.
 
+using Aster.Core.Server;
+
 namespace Aster.Core.Jellyfin;
 
 public sealed class ResumePoints
@@ -59,7 +61,7 @@ public sealed class ResumePoints
     /// once with <paramref name="force"/>. Live streams, which can't resume,
     /// are skipped, and so is a position outside the resume rules.
     /// </summary>
-    public Task ProgressAsync(PlaybackReport report, JellyfinClient client, bool force)
+    public Task ProgressAsync(PlaybackReport report, IMediaServer client, bool force)
     {
         if (!report.CanSeek || !KeepsResumePoint(report.PositionTicks, report.RunTimeTicks)) return Task.CompletedTask;
         var itemId = report.ItemId;
@@ -81,7 +83,7 @@ public sealed class ResumePoints
         }
     }
 
-    private static async Task SaveAfter(Task? previous, JellyfinClient client, string itemId, long ticks)
+    private static async Task SaveAfter(Task? previous, IMediaServer client, string itemId, long ticks)
     {
         if (previous is not null) await previous.ConfigureAwait(false);
         try { await client.SaveResumePositionAsync(itemId, ticks).ConfigureAwait(false); }

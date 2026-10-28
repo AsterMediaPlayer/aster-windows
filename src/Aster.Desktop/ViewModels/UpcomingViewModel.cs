@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Aster.Core.Browsing;
 using Aster.Core.Jellyfin;
+using Aster.Core.Server;
 using CommunityToolkit.Mvvm.Input;
 
 namespace Aster.Desktop.ViewModels;
@@ -48,7 +49,7 @@ public sealed class UpcomingViewModel : BrowsePageViewModel
 
     protected override async Task<IReadOnlyList<BrowseRow>> LoadTopAsync()
     {
-        var days = UpcomingSchedule.Days(await Navigator.Client.UpcomingAsync());
+        var days = UpcomingSchedule.Days(await Navigator.JellyfinOnly.UpcomingAsync());
         if (days.Count == 0)
         {
             return

@@ -6,7 +6,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Aster.Core.Jellyfin;
-using Query = System.Collections.Generic.Dictionary<string, string?>;
+using Aster.Core.Server;
 
 namespace Aster.Desktop.ViewModels;
 
@@ -33,11 +33,7 @@ public sealed class TypeGridViewModel : BrowsePageViewModel
     protected override string GridHeading => $"All {Title}";
     protected override IReadOnlySet<string> GridExcluding => anime;
 
-    protected override Query GridQuery() => new(SortQuery())
-    {
-        ["includeItemTypes"] = kind.ToString(),
-        ["recursive"] = "true",
-    };
+    protected override ItemQuery GridQuery() => SortedQuery() with { Kinds = [kind], Recursive = true };
 
     protected override async Task<IReadOnlyList<BrowseRow>> LoadTopAsync()
     {
@@ -93,7 +89,8 @@ public sealed class AnimeViewModel : BrowsePageViewModel
         var resume = AnimeCatalog.MergedAsync(ids, id => client.ResumeAsync(limit: 20, parentId: id));
         var next = AnimeCatalog.MergedAsync(showIds, id => client.NextUpAsync(limit: 20, parentId: id));
         var latest = AnimeCatalog.RecentlyAddedAsync(client, catalog.Libraries);
-        var musicVideos = Task.WhenAll(catalog.MusicVideoLibraries.Select(async l => (Library: l, Items: await client.LatestMusicVideosAsync(l.Id))));
+        // The OP/ED plugin's library, which only Jellyfin has.
+        var musicVideos = Task.WhenAll(catalog.MusicVideoLibraries.Select(async l => (Library: l, Items: await Navigator.JellyfinOnly.LatestMusicVideosAsync(l.Id))));
 
         // Newest first across libraries; ISO 8601 dates sort as text.
         var resumed = await resume;
@@ -131,15 +128,19 @@ public sealed class LibraryViewModel : BrowsePageViewModel
     {
         var client = Navigator.Client;
         var libraries = client.UserViewsAsync();
-        var favorites = client.ItemsAsync(new()
-        {
-            ["recursive"] = "true",
-            ["filters"] = "IsFavorite",
-            ["includeItemTypes"] = "Movie,Series,Episode",
-            ["sortBy"] = "SortName",
-            ["limit"] = "40",
-        });
-        var playlists = AnimeCatalog.OrEmpty(client.PlaylistsAsync("Video"));
+        var favorites = client.Can(ServerCapabilities.Favorites)
+            ? client.ItemsAsync(new ItemQuery
+            {
+                Recursive = true,
+                FavoritesOnly = true,
+                Kinds = [ItemKind.Movie, ItemKind.Series, ItemKind.Episode],
+                Sort = Aster.Core.Browsing.LibrarySort.Name,
+                Limit = 40,
+            })
+            : Task.FromResult(new ItemsResult());
+        var playlists = client is JellyfinClient jellyfin && jellyfin.Can(ServerCapabilities.Playlists)
+            ? AnimeCatalog.OrEmpty(jellyfin.PlaylistsAsync("Video"))
+            : Task.FromResult<IReadOnlyList<BaseItem>>([]);
         var favorite = (await favorites).Items;
         return new BrowseRow?[]
         {
@@ -166,24 +167,19 @@ public sealed class LibraryGridViewModel : BrowsePageViewModel
     protected override bool HasGrid => true;
     public override CardStyle GridStyle => parent.CollectionType is "homevideos" or "musicvideos" ? CardStyle.Landscape : CardStyle.Poster;
 
-    protected override Query GridQuery()
+    protected override ItemQuery GridQuery()
     {
-        var query = new Query(SortQuery()) { ["parentId"] = parent.Id };
+        var query = SortedQuery() with { ParentId = parent.Id };
         // Every title, not the folders (one per show or artist) they're in.
-        var types = parent.CollectionType switch
+        ItemKind? kind = parent.CollectionType switch
         {
-            "movies" => "Movie",
-            "tvshows" => "Series",
-            "boxsets" => "BoxSet",
-            "musicvideos" => "MusicVideo",
+            "movies" => ItemKind.Movie,
+            "tvshows" => ItemKind.Series,
+            "boxsets" => ItemKind.BoxSet,
+            "musicvideos" => ItemKind.MusicVideo,
             _ => null,
         };
-        if (types is not null)
-        {
-            query["includeItemTypes"] = types;
-            query["recursive"] = "true";
-        }
-        return query;
+        return kind is { } titles ? query with { Kinds = [titles], Recursive = true } : query;
     }
 
     protected override async Task<IReadOnlyList<BrowseRow>> LoadTopAsync()
@@ -210,11 +206,11 @@ public sealed class PersonViewModel : BrowsePageViewModel
     protected override bool HasGrid => true;
     protected override string GridHeading => "Filmography";
 
-    protected override Query GridQuery() => new(SortQuery())
+    protected override ItemQuery GridQuery() => SortedQuery() with
     {
-        ["personIds"] = person.Id,
-        ["recursive"] = "true",
-        ["includeItemTypes"] = "Movie,Series",
+        PersonId = person.Id,
+        Recursive = true,
+        Kinds = [ItemKind.Movie, ItemKind.Series],
     };
 
     protected override async Task<IReadOnlyList<BrowseRow>> LoadTopAsync()

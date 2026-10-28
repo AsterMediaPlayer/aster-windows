@@ -1,4 +1,5 @@
 using Aster.Core.Jellyfin;
+using Aster.Core.Server;
 
 namespace Aster.Core.Playback;
 
@@ -69,7 +70,7 @@ public static class TrackRules
     /// The episode after <paramref name="episode"/> in its series, skipping
     /// missing ones and, unless it's a special itself, the specials.
     /// </summary>
-    public static async Task<BaseItem?> NextEpisodeAsync(BaseItem episode, JellyfinClient client, CancellationToken ct = default)
+    public static async Task<BaseItem?> NextEpisodeAsync(BaseItem episode, IMediaServer client, CancellationToken ct = default)
     {
         if (episode.SeriesId is not { } seriesId) return null;
         IReadOnlyList<BaseItem> all;

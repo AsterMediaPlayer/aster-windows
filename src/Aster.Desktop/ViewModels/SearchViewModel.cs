@@ -94,6 +94,6 @@ public sealed partial class SearchViewModel(INavigator navigator) : ViewModelBas
         // A song plays the songs found, from it.
         var songs = results.Where(i => i.Kind == ItemKind.Audio).ToList();
         Songs = songs.Select((song, index) => ItemCard.Square(navigator, song,
-            () => navigator.Audio.Music.Play(songs, index, shuffled: false, navigator.Client))).ToList();
+            () => navigator.Audio.Music.Play(songs, index, shuffled: false, navigator.JellyfinOnly))).ToList();
     }
 }

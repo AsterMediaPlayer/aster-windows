@@ -7,7 +7,7 @@ step when either changes.
 
 | Project | What it is |
 | --- | --- |
-| `src/Aster.Core` | Jellyfin client, models, device profile, resume points, session storage (Windows Credential Manager), subtitle and trickplay helpers, JellyDisc models, audiobooks (grouping, chapters, speeds), anime openings and endings (found from chapters, and their song cards) |
+| `src/Aster.Core` | The server interface every screen asks (`Server/IMediaServer`, the Apple app's `MediaServer`, with what each server can do and `ItemQuery` for its titles), Jellyfin client (Jellyfin and Emby), models, device profile, resume points, session storage (Windows Credential Manager), subtitle and trickplay helpers, JellyDisc models, audiobooks (grouping, chapters, speeds), anime openings and endings (found from chapters, and their song cards) |
 | `src/Aster.Mpv` | Bindings for libmpv: the player, its events, and OpenGL rendering into the UI |
 | `src/Aster.Desktop` | The Avalonia app: sign-in, Home, Movies, TV Shows, Anime, Music, Audiobooks, Library, title, person, album, artist and book pages, the video player, and the music and audiobook players |
 | `tests/Aster.Core.Tests` | xUnit tests for the core (against a stub server) and for libmpv (with a clip made by ffmpeg, when it's installed) |

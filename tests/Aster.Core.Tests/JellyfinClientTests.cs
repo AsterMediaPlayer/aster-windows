@@ -1,6 +1,7 @@
 using System.Net;
 using System.Text.Json;
 using Aster.Core.Jellyfin;
+using Aster.Core.Server;
 
 namespace Aster.Core.Tests;
 

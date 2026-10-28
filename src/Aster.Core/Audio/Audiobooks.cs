@@ -145,7 +145,7 @@ public static class AudiobookLibrary
         var all = new List<Audiobook>();
         foreach (var library in libraries)
         {
-            var folders = client.ItemsAsync(new()
+            var folders = client.JellyfinItemsAsync(new()
             {
                 ["parentId"] = library.Id,
                 ["includeItemTypes"] = "Folder",
@@ -153,7 +153,7 @@ public static class AudiobookLibrary
                 ["fields"] = "ParentId",
                 ["enableUserData"] = "false",
             }, ct);
-            var files = client.ItemsAsync(new()
+            var files = client.JellyfinItemsAsync(new()
             {
                 ["parentId"] = library.Id,
                 ["includeItemTypes"] = "AudioBook",

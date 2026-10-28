@@ -10,6 +10,7 @@ using System.Net.Http;
 using System.Threading.Tasks;
 using Aster.Core.Audio;
 using Aster.Core.Jellyfin;
+using Aster.Core.Server;
 using Aster.Desktop.Audio;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -21,7 +22,7 @@ public sealed class AudiobookCard(INavigator navigator, Audiobook book) : ICard
 {
     public Audiobook Book { get; } = book;
     public string Key => Book.Id;
-    public Uri? Cover { get; } = navigator.Client.PosterUrl(book.Cover, width: 400);
+    public Uri? Cover { get; } = navigator.JellyfinOnly.PosterUrl(book.Cover, width: 400);
     public string Title => Book.Title;
     public string? Subtitle => Book.SeriesIndex is { } index && Book.Series is { } series ? $"{series} {index}" : Book.Author;
     public double Progress => Book.Progress * 100;
@@ -35,8 +36,8 @@ public sealed class AudiobookShelfCard(INavigator navigator, AudiobookShelf shel
 {
     public AudiobookShelf Shelf { get; } = shelf;
     public string Key => $"{Shelf.Kind}-{Shelf.Name}";
-    public Uri? Cover { get; } = navigator.Client.PosterUrl(shelf.Books[0].Cover, width: 400);
-    public Uri? SecondCover { get; } = shelf.Books.Count > 1 ? navigator.Client.PosterUrl(shelf.Books[1].Cover, width: 300) : null;
+    public Uri? Cover { get; } = navigator.JellyfinOnly.PosterUrl(shelf.Books[0].Cover, width: 400);
+    public Uri? SecondCover { get; } = shelf.Books.Count > 1 ? navigator.JellyfinOnly.PosterUrl(shelf.Books[1].Cover, width: 300) : null;
     public bool HasSecond => SecondCover is not null;
     public string Title => Shelf.Name;
     public string Subtitle => $"{Shelf.Books.Count} book{(Shelf.Books.Count == 1 ? "" : "s")}";
@@ -94,7 +95,7 @@ public sealed class AudiobooksViewModel : BrowsePageViewModel
     protected override async Task<IReadOnlyList<BrowseRow>> LoadTopAsync()
     {
         var libraries = library ?? (await Navigator.Libraries).Where(l => l.CollectionType == "books").ToList();
-        books = await AudiobookLibrary.LoadAsync(Navigator.Client, libraries);
+        books = await AudiobookLibrary.LoadAsync(Navigator.JellyfinOnly, libraries);
         BuildCards();
         var continuing = AudiobookLibrary.ContinueListening(books);
         var recent = AudiobookLibrary.RecentlyAdded(books);
@@ -121,7 +122,7 @@ public sealed class AudiobooksViewModel : BrowsePageViewModel
     /// <summary>The banner's Play: the book plays straight away, as Play on a title does.</summary>
     private void PlayFeatured(BaseItem cover)
     {
-        if (Find(cover) is { } book) Navigator.Audio.Books.Play(book, null, Navigator.Client);
+        if (Find(cover) is { } book) Navigator.Audio.Books.Play(book, null, Navigator.JellyfinOnly);
     }
 }
 
@@ -187,8 +188,8 @@ public sealed partial class AudiobookViewModel : ViewModelBase, IRefreshable, ID
 
     private int? currentChapter = -1;
 
-    public Uri? Cover => navigator.Client.PosterUrl(Book.Cover, width: 800);
-    public Uri? Backdrop => navigator.Client.PosterUrl(Book.Cover, width: 400);
+    public Uri? Cover => navigator.JellyfinOnly.PosterUrl(Book.Cover, width: 800);
+    public Uri? Backdrop => navigator.JellyfinOnly.PosterUrl(Book.Cover, width: 400);
     public string Title => Book.Title;
     public string? Author => Book.Author;
     public string? Overview => string.IsNullOrEmpty(Book.Overview) ? null : Book.Overview;
@@ -229,7 +230,7 @@ public sealed partial class AudiobookViewModel : ViewModelBase, IRefreshable, ID
         currentChapter = playing;
         Chapters = Book.Chapters
             .Select(c => new ChapterRow(c, MusicFormat.Clock(Book.OffsetOfPart(c.Part) + c.Start), c.Id == playing,
-                new RelayCommand(() => Player.Play(Book, c, navigator.Client))))
+                new RelayCommand(() => Player.Play(Book, c, navigator.JellyfinOnly))))
             .ToList();
     }
 
@@ -240,7 +241,7 @@ public sealed partial class AudiobookViewModel : ViewModelBase, IRefreshable, ID
     {
         try
         {
-            var fresh = await navigator.Client.ItemsAsync(new()
+            var fresh = await navigator.JellyfinOnly.JellyfinItemsAsync(new()
             {
                 ["ids"] = string.Join(',', Book.Parts.Select(p => p.Id)),
                 ["fields"] = AudiobookLibrary.Fields,
@@ -262,12 +263,12 @@ public sealed partial class AudiobookViewModel : ViewModelBase, IRefreshable, ID
         }
         else
         {
-            Player.Play(Book, null, navigator.Client);
+            Player.Play(Book, null, navigator.JellyfinOnly);
         }
     }
 
     [RelayCommand]
-    private void FromBeginning() => Player.Play(Book, Book.Chapters.FirstOrDefault() ?? new AudiobookChapter(0, 0, 0, ""), navigator.Client);
+    private void FromBeginning() => Player.Play(Book, Book.Chapters.FirstOrDefault() ?? new AudiobookChapter(0, 0, 0, ""), navigator.JellyfinOnly);
 
     [RelayCommand] private void Back() => navigator.Back();
 }

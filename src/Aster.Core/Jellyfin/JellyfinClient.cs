@@ -1,4 +1,4 @@
-// A thin async client for the Jellyfin REST API (10.9+ routes) plus the
+﻿// A thin async client for the Jellyfin REST API (10.9+ routes) plus the
 // JellyDisc plugin's player-facing endpoint. A port of the Apple app's
 // JellyfinClient.swift; keep the two in step.
 
@@ -9,11 +9,12 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using Aster.Core.DiscMenu;
 using Aster.Core.Playback;
+using Aster.Core.Server;
 using Query = System.Collections.Generic.Dictionary<string, string?>;
 
 namespace Aster.Core.Jellyfin;
 
-public sealed class JellyfinClient
+public sealed class JellyfinClient : IMediaServer
 {
     /// <summary>
     /// One connection pool for the whole app. Timeouts are per request, since
@@ -44,6 +45,19 @@ public sealed class JellyfinClient
     public ServerKind Kind { get; }
 
     public bool IsJellyfin => Kind == ServerKind.Jellyfin;
+
+    /// <summary>Everything Aster does, less Quick Connect and Aster's plugins on Emby.</summary>
+    public ServerCapabilities Capabilities
+    {
+        get
+        {
+            const ServerCapabilities all = ServerCapabilities.QuickConnect | ServerCapabilities.Plugins | ServerCapabilities.LiveTV
+                | ServerCapabilities.Music | ServerCapabilities.Audiobooks | ServerCapabilities.Channels | ServerCapabilities.Downloads
+                | ServerCapabilities.Upcoming | ServerCapabilities.Playlists | ServerCapabilities.Favorites | ServerCapabilities.Trickplay
+                | ServerCapabilities.SettingsSync | ServerCapabilities.Lyrics;
+            return Kind == ServerKind.Emby ? all & ~(ServerCapabilities.QuickConnect | ServerCapabilities.Plugins) : all;
+        }
+    }
 
     private readonly HttpClient http;
 
@@ -263,7 +277,11 @@ public sealed class JellyfinClient
     public Task<BaseItem> ItemAsync(string id, CancellationToken ct = default) =>
         GetAsync<BaseItem>(Route($"/Items/{id}", () => $"/Users/{RequireUser()}/Items/{id}"), new() { ["userId"] = RequireUser(), ["fields"] = DetailFields }, ct);
 
-    public Task<ItemsResult> ItemsAsync(Query query, CancellationToken ct = default)
+    public Task<ItemsResult> ItemsAsync(ItemQuery query, CancellationToken ct = default) =>
+        JellyfinItemsAsync(query.JellyfinParameters(), ct);
+
+    /// <summary>Titles by Jellyfin's own <c>/Items</c> parameters, for what only Jellyfin has (music, playlists, channels' sources).</summary>
+    public Task<ItemsResult> JellyfinItemsAsync(Query query, CancellationToken ct = default)
     {
         var merged = new Query
         {
@@ -429,8 +447,8 @@ public sealed class JellyfinClient
         return AllItemsAsync(query, ct);
     }
 
-    public Task<List<BaseItem>> LatestAsync(string? parentId, int limit = 20, string? includeTypes = null, CancellationToken ct = default) =>
-        GetAsync<List<BaseItem>>(Route("/Items/Latest", () => $"/Users/{RequireUser()}/Items/Latest"), new()
+    public async Task<IReadOnlyList<BaseItem>> LatestAsync(string? parentId, int limit = 20, string? includeTypes = null, CancellationToken ct = default) =>
+        await GetAsync<List<BaseItem>>(Route("/Items/Latest", () => $"/Users/{RequireUser()}/Items/Latest"), new()
         {
             ["userId"] = RequireUser(),
             ["parentId"] = parentId,
@@ -481,7 +499,7 @@ public sealed class JellyfinClient
             IReadOnlyList<BaseItem> sample;
             try
             {
-                sample = (await ItemsAsync(new()
+                sample = (await JellyfinItemsAsync(new()
                 {
                     ["parentId"] = library.Id,
                     ["recursive"] = "true",
@@ -504,13 +522,13 @@ public sealed class JellyfinClient
     /// Just the ids of the given kinds of item in some libraries: no images
     /// or extra fields, so even large libraries come back quickly.
     /// </summary>
-    public async Task<HashSet<string>> ItemIdsAsync(IEnumerable<string> libraryIds, string types, CancellationToken ct = default)
+    public async Task<IReadOnlySet<string>> ItemIdsAsync(IEnumerable<string> libraryIds, string types, CancellationToken ct = default)
     {
         var chunks = await Task.WhenAll(libraryIds.Select(async libraryId =>
         {
             try
             {
-                var result = await ItemsAsync(new()
+                var result = await JellyfinItemsAsync(new()
                 {
                     ["parentId"] = libraryId,
                     ["recursive"] = "true",
@@ -630,7 +648,7 @@ public sealed class JellyfinClient
 
     /// <summary>A library's newest music videos, for a shelf.</summary>
     public async Task<IReadOnlyList<BaseItem>> LatestMusicVideosAsync(string libraryId, int limit = 20, CancellationToken ct = default) =>
-        await OrNullAsync(async () => (await ItemsAsync(new()
+        await OrNullAsync(async () => (await JellyfinItemsAsync(new()
         {
             ["parentId"] = libraryId,
             ["includeItemTypes"] = "MusicVideo",
@@ -665,11 +683,11 @@ public sealed class JellyfinClient
             ["fields"] = ListFields,
         }, ct).ConfigureAwait(false)).Items;
 
-    public Task<List<BaseItem>> SpecialFeaturesAsync(string id, CancellationToken ct = default) =>
-        GetAsync<List<BaseItem>>(Route($"/Items/{id}/SpecialFeatures", () => $"/Users/{RequireUser()}/Items/{id}/SpecialFeatures"), new() { ["userId"] = RequireUser() }, ct);
+    public async Task<IReadOnlyList<BaseItem>> SpecialFeaturesAsync(string id, CancellationToken ct = default) =>
+        await GetAsync<List<BaseItem>>(Route($"/Items/{id}/SpecialFeatures", () => $"/Users/{RequireUser()}/Items/{id}/SpecialFeatures"), new() { ["userId"] = RequireUser() }, ct);
 
     public async Task<IReadOnlyList<BaseItem>> SearchAsync(string term, int limit = 60, CancellationToken ct = default) =>
-        (await ItemsAsync(new()
+        (await JellyfinItemsAsync(new()
         {
             ["searchTerm"] = term,
             ["recursive"] = "true",
@@ -838,66 +856,6 @@ public sealed class JellyfinClient
     public Uri UserImageUrl(string userId, string? tag) =>
         Url("/UserImage", new() { ["userId"] = userId, ["tag"] = tag, ["maxWidth"] = "300" });
 
-    private static string? Tag(IReadOnlyDictionary<string, string>? tags, string kind) =>
-        tags is not null && tags.TryGetValue(kind, out var tag) ? tag : null;
-
-    /// <summary>
-    /// Best landscape picture for a lockup: the item's own backdrop or thumb,
-    /// then its parent's, then the primary image for episodes.
-    /// </summary>
-    public Uri? LandscapeUrl(BaseItem item, int width = 800)
-    {
-        if (item.Kind == ItemKind.Episode && Tag(item.ImageTags, "Primary") is { } episodeTag)
-            return ImageUrl(item.Id, ImageKind.Primary, episodeTag, maxWidth: width);
-        if (Tag(item.ImageTags, "Thumb") is { } thumb)
-            return ImageUrl(item.Id, ImageKind.Thumb, thumb, maxWidth: width);
-        if (item.BackdropImageTags?.FirstOrDefault() is { } backdrop)
-            return ImageUrl(item.Id, ImageKind.Backdrop, backdrop, index: 0, maxWidth: width);
-        if (item.ParentThumbItemId is { } thumbParent && item.ParentThumbImageTag is { } parentThumb)
-            return ImageUrl(thumbParent, ImageKind.Thumb, parentThumb, maxWidth: width);
-        if (item.ParentBackdropItemId is { } backdropParent && item.ParentBackdropImageTags?.FirstOrDefault() is { } parentBackdrop)
-            return ImageUrl(backdropParent, ImageKind.Backdrop, parentBackdrop, index: 0, maxWidth: width);
-        if (item.SeriesId is { } series && item.SeriesThumbImageTag is { } seriesThumb)
-            return ImageUrl(series, ImageKind.Thumb, seriesThumb, maxWidth: width);
-        if (Tag(item.ImageTags, "Primary") is { } primary)
-            return ImageUrl(item.Id, ImageKind.Primary, primary, maxWidth: width);
-        return null;
-    }
-
-    public Uri? PosterUrl(BaseItem item, int width = 500, int quality = 90)
-    {
-        if (Tag(item.ImageTags, "Primary") is { } primary)
-            return ImageUrl(item.Id, ImageKind.Primary, primary, maxWidth: width, quality: quality);
-        if (item.AlbumId is { } album && item.AlbumPrimaryImageTag is { } albumTag)
-            return ImageUrl(album, ImageKind.Primary, albumTag, maxWidth: width, quality: quality);
-        if (item.SeriesId is { } series && item.SeriesPrimaryImageTag is { } seriesTag)
-            return ImageUrl(series, ImageKind.Primary, seriesTag, maxWidth: width, quality: quality);
-        if (item.ParentPrimaryImageItemId is { } parent && item.ParentPrimaryImageTag is { } parentTag)
-            return ImageUrl(parent, ImageKind.Primary, parentTag, maxWidth: width, quality: quality);
-        return null;
-    }
-
-    public Uri? BackdropUrl(BaseItem item, int width = 1920)
-    {
-        if (item.BackdropImageTags?.FirstOrDefault() is { } backdrop)
-            return ImageUrl(item.Id, ImageKind.Backdrop, backdrop, index: 0, maxWidth: width);
-        if (item.ParentBackdropItemId is { } parent && item.ParentBackdropImageTags?.FirstOrDefault() is { } parentBackdrop)
-            return ImageUrl(parent, ImageKind.Backdrop, parentBackdrop, index: 0, maxWidth: width);
-        return LandscapeUrl(item, width);
-    }
-
-    public Uri? LogoUrl(BaseItem item, int width = 800)
-    {
-        if (Tag(item.ImageTags, "Logo") is { } logo)
-            return ImageUrl(item.Id, ImageKind.Logo, logo, maxWidth: width);
-        if (item.ParentLogoItemId is { } parent && item.ParentLogoImageTag is { } parentLogo)
-            return ImageUrl(parent, ImageKind.Logo, parentLogo, maxWidth: width);
-        return null;
-    }
-
-    public Uri? PersonImageUrl(PersonInfo person, int width = 300) =>
-        person.PrimaryImageTag is { } tag ? ImageUrl(person.Id, ImageKind.Primary, tag, maxWidth: width) : null;
-
     // ---- Streams ----
 
     public Uri DirectStreamUrl(string itemId, string mediaSourceId, string? playSessionId) =>
@@ -942,7 +900,7 @@ public sealed class JellyfinClient
 
     /// <summary>An album's songs in disc and track order.</summary>
     public async Task<IReadOnlyList<BaseItem>> AlbumTracksAsync(string albumId, CancellationToken ct = default) =>
-        (await ItemsAsync(new()
+        (await JellyfinItemsAsync(new()
         {
             ["parentId"] = albumId,
             ["includeItemTypes"] = "Audio",
@@ -951,7 +909,7 @@ public sealed class JellyfinClient
 
     /// <summary>Albums an artist is credited on, newest first.</summary>
     public async Task<IReadOnlyList<BaseItem>> ArtistAlbumsAsync(string artistId, CancellationToken ct = default) =>
-        (await ItemsAsync(new()
+        (await JellyfinItemsAsync(new()
         {
             ["albumArtistIds"] = artistId,
             ["includeItemTypes"] = "MusicAlbum",
@@ -962,7 +920,7 @@ public sealed class JellyfinClient
 
     /// <summary>Every song by an artist, in album order, for Play and Shuffle.</summary>
     public async Task<IReadOnlyList<BaseItem>> ArtistTracksAsync(string artistId, int limit = 400, CancellationToken ct = default) =>
-        (await ItemsAsync(new()
+        (await JellyfinItemsAsync(new()
         {
             ["artistIds"] = artistId,
             ["includeItemTypes"] = "Audio",
@@ -1243,7 +1201,7 @@ public sealed class JellyfinClient
 
     /// <summary>The user's playlists of one media type ("Audio" or "Video").</summary>
     public async Task<IReadOnlyList<BaseItem>> PlaylistsAsync(string mediaType, CancellationToken ct = default) =>
-        (await ItemsAsync(new()
+        (await JellyfinItemsAsync(new()
         {
             ["fields"] = ListFields + ",Tags",
             ["includeItemTypes"] = "Playlist",

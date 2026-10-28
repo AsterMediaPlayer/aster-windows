@@ -8,6 +8,7 @@ using System.Linq;
 using Aster.Core.Anime;
 using Aster.Core.Jellyfin;
 using Aster.Core.Playback;
+using Aster.Core.Server;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
@@ -114,7 +115,7 @@ public partial class OpeningEndingCard : ObservableObject
     }
 
     /// <summary>A clip of its episode: just that stretch, its resume point and watched state left alone.</summary>
-    public static OpeningEndingCard Clip(JellyfinClient client, ThemeClip clip, string series, Action<PlaybackQueueItem> play) =>
+    public static OpeningEndingCard Clip(IMediaServer client, ThemeClip clip, string series, Action<PlaybackQueueItem> play) =>
         new(play, new PlaybackQueueItem
         {
             ItemId = clip.Episode.Id,

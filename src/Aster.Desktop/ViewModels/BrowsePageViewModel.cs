@@ -6,6 +6,7 @@ using System.Net.Http;
 using System.Threading.Tasks;
 using Aster.Core.Browsing;
 using Aster.Core.Jellyfin;
+using Aster.Core.Server;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Query = System.Collections.Generic.Dictionary<string, string?>;
 
@@ -123,8 +124,11 @@ public sealed class GridLoader
         ErrorMessage = null;
     }
 
-    /// <summary>The next page, from <paramref name="fetch"/>; false when nothing was loaded (already loading, or it failed).</summary>
-    public async Task<bool> LoadNextAsync(Query query, IReadOnlySet<string> excluding, Func<Query, Task<ItemsResult>> fetch)
+    /// <summary>
+    /// The next page, from <paramref name="fetch"/> (given where to start and
+    /// how many); false when nothing was loaded (already loading, or it failed).
+    /// </summary>
+    public async Task<bool> LoadNextAsync(IReadOnlySet<string> excluding, Func<int, int, Task<ItemsResult>> fetch)
     {
         if (IsLoading) return false;
         var started = generation;
@@ -132,8 +136,7 @@ public sealed class GridLoader
         ErrorMessage = null;
         try
         {
-            var page = new Query(query) { ["startIndex"] = fetched.ToString(), ["limit"] = "100" };
-            var result = await fetch(page);
+            var result = await fetch(fetched, 100);
             if (started != generation) return false;
             fetched += result.Items.Count;
             total = result.TotalRecordCount ?? fetched;
@@ -203,12 +206,13 @@ public abstract partial class BrowsePageViewModel : ViewModelBase, IRefreshable
     /// <summary>"All Movies"; null for no heading over the grid.</summary>
     protected virtual string? GridHeading => null;
 
-    protected virtual Query GridQuery() => [];
+    /// <summary>The grid's titles, for a page whose grid any server can fill.</summary>
+    protected virtual ItemQuery GridQuery() => new();
 
     protected virtual IReadOnlySet<string> GridExcluding => new HashSet<string>();
 
-    /// <summary>Fetches one page of the grid; most pages list items, artists come from their own route.</summary>
-    protected virtual Task<ItemsResult> FetchGridPage(Query query) => Navigator.Client.ItemsAsync(query);
+    /// <summary>Fetches one page of the grid: from its query, unless the page asks Jellyfin itself (music).</summary>
+    protected virtual Task<ItemsResult> FetchGridPage(int start, int size) => Navigator.Client.ItemsAsync(GridQuery().Page(start, size));
 
     /// <summary>A card for one of the grid's items.</summary>
     protected virtual object MakeCard(BaseItem item) => GridStyle switch
@@ -249,6 +253,14 @@ public abstract partial class BrowsePageViewModel : ViewModelBase, IRefreshable
         if (started) _ = ReloadGridAsync();
     }
 
+    /// <summary>The grid's query sorted as chosen, for a page with the library's own sorts (<see cref="LibrarySort"/>).</summary>
+    protected ItemQuery SortedQuery()
+    {
+        var sort = (LibrarySort)Math.Clamp(SortIndex, 0, Enum.GetValues<LibrarySort>().Length - 1);
+        return new ItemQuery { Sort = sort, Descending = sort != LibrarySort.Name };
+    }
+
+    /// <summary>The sort chosen as Jellyfin's parameters, for a page with sorts of its own (music).</summary>
     protected Query SortQuery()
     {
         var sort = Sorts[Math.Clamp(SortIndex, 0, Sorts.Count - 1)];
@@ -308,7 +320,7 @@ public abstract partial class BrowsePageViewModel : ViewModelBase, IRefreshable
             return;
         }
         RebuildGrid();
-        if (!await grid.LoadNextAsync(GridQuery(), GridExcluding, FetchGridPage))
+        if (!await grid.LoadNextAsync(GridExcluding, FetchGridPage))
         {
             RebuildGrid();
             return;
@@ -316,7 +328,7 @@ public abstract partial class BrowsePageViewModel : ViewModelBase, IRefreshable
         if (SortedByName && IndexesByName)
         {
             RebuildGrid();
-            while (grid.HasMore && await grid.LoadNextAsync(GridQuery(), GridExcluding, FetchGridPage)) { }
+            while (grid.HasMore && await grid.LoadNextAsync(GridExcluding, FetchGridPage)) { }
             sections = grid.HasMore ? [] : LibraryIndex.Sections(grid.Items);
             IndexKeys = sections.Count > 1 ? sections.Select(s => s.Key).ToList() : [];
         }
@@ -327,7 +339,7 @@ public abstract partial class BrowsePageViewModel : ViewModelBase, IRefreshable
     public async Task LoadMoreAsync()
     {
         if (!HasGrid || LocalCards is not null || (SortedByName && IndexesByName) || !grid.HasMore || grid.IsLoading) return;
-        if (await grid.LoadNextAsync(GridQuery(), GridExcluding, FetchGridPage)) RebuildGrid();
+        if (await grid.LoadNextAsync(GridExcluding, FetchGridPage)) RebuildGrid();
     }
 
     /// <summary>The items in the grid so far, for playing a list from one of them.</summary>

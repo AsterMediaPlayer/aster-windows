@@ -9,6 +9,7 @@ using System.ComponentModel;
 using System.Linq;
 using Aster.Core.Audio;
 using Aster.Core.Jellyfin;
+using Aster.Core.Server;
 using Aster.Desktop.Audio;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;

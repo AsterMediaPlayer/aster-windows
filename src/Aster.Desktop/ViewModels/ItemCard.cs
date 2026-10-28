@@ -3,6 +3,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Aster.Core.Jellyfin;
 using Aster.Core.Playback;
+using Aster.Core.Server;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
@@ -163,7 +164,7 @@ public partial class ItemCard : ObservableObject, ICard
     }
 
     /// <summary>Shows the change right away and puts it back if the server refuses.</summary>
-    private async Task UpdateAsync(UserItemData data, Func<JellyfinClient, Task> send)
+    private async Task UpdateAsync(UserItemData data, Func<IMediaServer, Task> send)
     {
         var before = Item;
         Item = Item with { UserData = data };

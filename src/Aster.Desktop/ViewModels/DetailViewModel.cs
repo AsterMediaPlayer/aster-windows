@@ -14,6 +14,7 @@ using System.Threading.Tasks;
 using Aster.Core.Anime;
 using Aster.Core.Jellyfin;
 using Aster.Core.Playback;
+using Aster.Core.Server;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
@@ -49,7 +50,7 @@ public partial class DetailViewModel : ViewModelBase, IRefreshable
         _ = LoadAsync(item);
     }
 
-    private JellyfinClient Client => navigator.Client;
+    private IMediaServer Client => navigator.Client;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(Backdrop), nameof(Logo), nameof(SeriesLogo), nameof(SeriesName), nameof(Title), nameof(EpisodeCode),
@@ -135,12 +136,12 @@ public partial class DetailViewModel : ViewModelBase, IRefreshable
     {
         if (theme.VideoMp4Url is { } video)
         {
-            navigator.Theme.ShowOpening(this, Item, theme.Id, Client.OpEdMediaUrl(video), sound: sound);
+            navigator.Theme.ShowOpening(this, Item, theme.Id, navigator.JellyfinOnly.OpEdMediaUrl(video), sound: sound);
             return true;
         }
         if (sound && theme.AudioM4aUrl is { } song)
         {
-            navigator.Theme.ShowOpeningSong(this, Item, theme.Id, Client.OpEdMediaUrl(song));
+            navigator.Theme.ShowOpeningSong(this, Item, theme.Id, navigator.JellyfinOnly.OpEdMediaUrl(song));
             return true;
         }
         return false;
@@ -304,7 +305,9 @@ public partial class DetailViewModel : ViewModelBase, IRefreshable
 
     private async Task<Aster.Core.DiscMenu.DiscMenuDocument?> DiscMenuOrNullAsync(string itemId)
     {
-        try { return await Client.DiscMenuAsync(itemId); }
+        // Disc menus come from Aster's Jellyfin plugin.
+        if (Client is not JellyfinClient jellyfin || !jellyfin.Can(ServerCapabilities.Plugins)) return null;
+        try { return await jellyfin.DiscMenuAsync(itemId); }
         catch (Exception error) when (IsServerError(error) || error is System.Text.Json.JsonException) { return null; }
     }
 
@@ -397,7 +400,10 @@ public partial class DetailViewModel : ViewModelBase, IRefreshable
     /// </summary>
     private async Task<IReadOnlyList<OpeningEndingCard>> OpeningsEndingsAsync(BaseItem show)
     {
-        var themes = (await Client.OpEdThemesAsync(show.Id) ?? []).Where(t => t.PlayablePath is not null || t.IsPreparing).ToList();
+        // The OP/ED plugin's, on Jellyfin.
+        var plugin = Client is JellyfinClient jellyfin && jellyfin.Can(ServerCapabilities.Plugins) ? jellyfin : null;
+        IReadOnlyList<OpEdTheme> found = plugin is null ? [] : await plugin.OpEdThemesAsync(show.Id) ?? [];
+        var themes = found.Where(t => t.PlayablePath is not null || t.IsPreparing).ToList();
         if (themes.Count > 0)
         {
             pluginThemes = themes;
@@ -409,7 +415,7 @@ public partial class DetailViewModel : ViewModelBase, IRefreshable
                 {
                     var at = theme.SeasonId is { } id ? allSeasons.Select((s, i) => (s, i)).FirstOrDefault(p => p.s.Id == id, (null!, -1)).Item2 : -1;
                     var seasonName = named && at >= 0 ? allSeasons[at].DisplayTitle : null;
-                    return OpeningEndingCard.Theme(Client, theme, show, seasonName, at, PlayTheme);
+                    return OpeningEndingCard.Theme(plugin!, theme, show, seasonName, at, PlayTheme);
                 })
                 .OrderBy(c => c.Order)
                 .ToList();

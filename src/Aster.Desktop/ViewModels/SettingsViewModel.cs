@@ -5,6 +5,7 @@ using System.Reflection;
 using System.Threading.Tasks;
 using Aster.Core;
 using Aster.Core.Jellyfin;
+using Aster.Core.Server;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
@@ -136,7 +137,10 @@ public sealed partial class SettingsViewModel : ViewModelBase
 
     private void Change(Func<AppSettings, AppSettings> change)
     {
-        if (!showing) _ = SettingsSync.ChangeAsync(navigator.Client, change);
+        if (showing) return;
+        // Following the user only where the server keeps settings; otherwise just here.
+        if (navigator.Jellyfin is { } jellyfin && jellyfin.Can(ServerCapabilities.SettingsSync)) _ = SettingsSync.ChangeAsync(jellyfin, change);
+        else AppSettings.Save(change(AppSettings.Current));
     }
 
     /// <summary>This computer's settings, as they are now.</summary>
@@ -233,10 +237,11 @@ public sealed partial class SettingsViewModel : ViewModelBase
 
     private async void UpdateConfiguration(Func<UserConfiguration, UserConfiguration> change)
     {
-        if (showing || configuration is null) return;
+        // Only loaded from a Jellyfin or Emby user.
+        if (showing || configuration is null || navigator.Jellyfin is not { } jellyfin) return;
         var updated = change(configuration);
         configuration = updated;
-        try { await navigator.Client.UpdateConfigurationAsync(updated); }
+        try { await jellyfin.UpdateConfigurationAsync(updated); }
         catch (Exception error) when (error is JellyfinException or System.Net.Http.HttpRequestException or TimeoutException)
         {
             ConfigurationError = error.Message;
@@ -246,7 +251,7 @@ public sealed partial class SettingsViewModel : ViewModelBase
     // ---- Account ----
 
     /// <summary>Disc menus come from a Jellyfin plugin: their page hides on Emby.</summary>
-    public bool IsJellyfin => navigator.Client.IsJellyfin;
+    public bool IsJellyfin => navigator.Jellyfin?.IsJellyfin == true;
 
     /// <summary>"Jellyfin version" or "Emby version".</summary>
     public string ServerVersionLabel => $"{navigator.Client.Kind} version";
@@ -288,11 +293,17 @@ public sealed partial class SettingsViewModel : ViewModelBase
     /// </summary>
     private async Task LoadAsync()
     {
-        var pull = SettingsSync.PullAsync(navigator.Client);
-        var info = navigator.Client.PublicSystemInfoAsync();
+        // Settings, languages and the version as Jellyfin and Emby keep them.
+        if (navigator.Jellyfin is not { } jellyfin)
+        {
+            ShowLocal();
+            return;
+        }
+        var pull = jellyfin.Can(ServerCapabilities.SettingsSync) ? SettingsSync.PullAsync(jellyfin) : Task.CompletedTask;
+        var info = jellyfin.PublicSystemInfoAsync();
         try
         {
-            configuration = (await navigator.Client.MeAsync()).Configuration ?? new UserConfiguration();
+            configuration = (await jellyfin.MeAsync()).Configuration ?? new UserConfiguration();
             var audio = configuration.AudioLanguagePreference ?? "";
             var subtitles = configuration.SubtitleLanguagePreference ?? "";
             var mode = Enum.TryParse<SubtitleMode>(configuration.SubtitleMode, out var parsed) ? parsed : SubtitleMode.Default;

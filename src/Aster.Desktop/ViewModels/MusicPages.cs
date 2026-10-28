@@ -8,6 +8,7 @@ using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
 using Aster.Core.Jellyfin;
+using Aster.Core.Server;
 using Aster.Desktop.Audio;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -97,7 +98,8 @@ public sealed class MusicViewModel : BrowsePageViewModel
         new("Year", "ProductionYear,SortName", "Descending"),
     ];
 
-    protected override Query GridQuery() => section switch
+    /// <summary>The grid's titles as Jellyfin's parameters: music is Jellyfin's (and Emby's) alone.</summary>
+    private Query MusicQuery() => section switch
     {
         Section.Albums => new(SortQuery()) { ["parentId"] = library?.Id, ["includeItemTypes"] = "MusicAlbum", ["recursive"] = "true" },
         Section.Playlists => new() { ["includeItemTypes"] = "Playlist", ["mediaTypes"] = "Audio", ["recursive"] = "true", ["sortBy"] = "SortName", ["sortOrder"] = "Ascending" },
@@ -106,18 +108,22 @@ public sealed class MusicViewModel : BrowsePageViewModel
     };
 
     /// <summary>Artists come from their own route, credited on albums.</summary>
-    protected override Task<ItemsResult> FetchGridPage(Query query) => section == Section.Artists
-        ? Navigator.Client.AlbumArtistsAsync(library?.Id, int.Parse(query["startIndex"]!), int.Parse(query["limit"]!))
-        : base.FetchGridPage(query);
+    protected override Task<ItemsResult> FetchGridPage(int start, int size) => section == Section.Artists
+        ? Navigator.JellyfinOnly.AlbumArtistsAsync(library?.Id, start, size)
+        : Navigator.JellyfinOnly.JellyfinItemsAsync(new Query(MusicQuery())
+        {
+            ["startIndex"] = start.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            ["limit"] = size.ToString(System.Globalization.CultureInfo.InvariantCulture),
+        });
 
     protected override object MakeCard(BaseItem item)
     {
         if (section != Section.Songs) return base.MakeCard(item);
-        return new TrackItem(item, null, showArtist: true, Navigator.Client.PosterUrl(item, width: 120),
+        return new TrackItem(item, null, showArtist: true, Navigator.JellyfinOnly.PosterUrl(item, width: 120),
             Navigator.Audio.Music.Current?.Id == item.Id, () =>
             {
                 var songs = GridItems;
-                Navigator.Audio.Music.Play(songs, songs.ToList().FindIndex(s => s.Id == item.Id), shuffled: false, Navigator.Client);
+                Navigator.Audio.Music.Play(songs, songs.ToList().FindIndex(s => s.Id == item.Id), shuffled: false, Navigator.JellyfinOnly);
             });
     }
 
@@ -126,14 +132,14 @@ public sealed class MusicViewModel : BrowsePageViewModel
         var rows = new List<BrowseRow> { new TitleRow(library?.DisplayTitle ?? "Music", this) };
         if (section != Section.Albums) return rows;
 
-        var client = Navigator.Client;
+        var client = Navigator.JellyfinOnly;
         var recent = AnimeCatalog.OrEmpty(client.LatestAsync(library?.Id, 20, "MusicAlbum"));
-        var played = OrEmpty(client.ItemsAsync(new()
+        var played = OrEmpty(client.JellyfinItemsAsync(new()
         {
             ["parentId"] = library?.Id, ["includeItemTypes"] = "Audio", ["recursive"] = "true",
             ["filters"] = "IsPlayed", ["sortBy"] = "DatePlayed", ["sortOrder"] = "Descending", ["limit"] = "20",
         }));
-        var favorites = OrEmpty(client.ItemsAsync(new()
+        var favorites = OrEmpty(client.JellyfinItemsAsync(new()
         {
             ["parentId"] = library?.Id, ["includeItemTypes"] = "MusicAlbum", ["recursive"] = "true",
             ["filters"] = "IsFavorite", ["sortBy"] = "SortName", ["limit"] = "20",
@@ -144,7 +150,7 @@ public sealed class MusicViewModel : BrowsePageViewModel
             SquareShelf("Recently Added", await recent),
             // A song here plays the shelf from it.
             Shelf("Recently Played", recentlyPlayed.Select((song, i) => ItemCard.Square(Navigator, song,
-                () => Navigator.Audio.Music.Play(recentlyPlayed, i, shuffled: false, Navigator.Client))), CardStyle.Square),
+                () => Navigator.Audio.Music.Play(recentlyPlayed, i, shuffled: false, Navigator.JellyfinOnly))), CardStyle.Square),
             SquareShelf("Favorite Albums", await favorites),
         }.OfType<BrowseRow>());
         return rows;
@@ -193,8 +199,8 @@ public sealed partial class AlbumViewModel : ViewModelBase, IRefreshable, IDispo
     [ObservableProperty] public partial string? Message { get; private set; }
 
     public string Title => Item.DisplayTitle;
-    public Uri? Artwork => navigator.Client.PosterUrl(Item, width: 800);
-    public Uri? Backdrop => navigator.Client.PosterUrl(Item, width: 400);
+    public Uri? Artwork => navigator.JellyfinOnly.PosterUrl(Item, width: 800);
+    public Uri? Backdrop => navigator.JellyfinOnly.PosterUrl(Item, width: 400);
     public string? ArtistName => IsPlaylist ? null : Item.PrimaryArtist?.Name ?? Item.ArtistText;
     public bool CanOpenArtist => !IsPlaylist && Item.PrimaryArtist?.Id is not null;
     public string? Overview => string.IsNullOrEmpty(Item.Overview) ? null : Item.Overview;
@@ -218,7 +224,7 @@ public sealed partial class AlbumViewModel : ViewModelBase, IRefreshable, IDispo
 
     private async Task LoadAsync()
     {
-        var client = navigator.Client;
+        var client = navigator.JellyfinOnly;
         try
         {
             var full = client.ItemAsync(id);
@@ -277,7 +283,7 @@ public sealed partial class AlbumViewModel : ViewModelBase, IRefreshable, IDispo
         list.Insert(newIndex, moved);
         tracks = list;
         BuildRows();
-        try { await navigator.Client.MovePlaylistItemAsync(id, song.PlaylistItemId!, newIndex); }
+        try { await navigator.JellyfinOnly.MovePlaylistItemAsync(id, song.PlaylistItemId!, newIndex); }
         catch (Exception error) when (error is JellyfinException or HttpRequestException or TimeoutException)
         {
             tracks = before;
@@ -291,7 +297,7 @@ public sealed partial class AlbumViewModel : ViewModelBase, IRefreshable, IDispo
         var before = tracks;
         tracks = tracks.Where(t => t.PlaylistRowId != song.PlaylistRowId).ToList();
         BuildRows();
-        try { await navigator.Client.RemoveFromPlaylistAsync(id, [song.PlaylistItemId!]); }
+        try { await navigator.JellyfinOnly.RemoveFromPlaylistAsync(id, [song.PlaylistItemId!]); }
         catch (Exception error) when (error is JellyfinException or HttpRequestException or TimeoutException)
         {
             tracks = before;
@@ -302,7 +308,7 @@ public sealed partial class AlbumViewModel : ViewModelBase, IRefreshable, IDispo
 
     private void PlayFrom(int position, bool shuffled)
     {
-        if (tracks.Count > 0) navigator.Audio.Music.Play(tracks, position, shuffled, navigator.Client);
+        if (tracks.Count > 0) navigator.Audio.Music.Play(tracks, position, shuffled, navigator.JellyfinOnly);
     }
 
     [RelayCommand] private void Play() => PlayFrom(0, shuffled: false);
@@ -312,9 +318,9 @@ public sealed partial class AlbumViewModel : ViewModelBase, IRefreshable, IDispo
     private async Task InstantMixAsync()
     {
         IReadOnlyList<BaseItem> mix;
-        try { mix = await navigator.Client.InstantMixAsync(id); }
+        try { mix = await navigator.JellyfinOnly.InstantMixAsync(id); }
         catch (Exception error) when (error is JellyfinException or HttpRequestException or TimeoutException) { mix = tracks; }
-        navigator.Audio.Music.Play(mix, 0, shuffled: false, navigator.Client);
+        navigator.Audio.Music.Play(mix, 0, shuffled: false, navigator.JellyfinOnly);
     }
 
     [RelayCommand]
@@ -322,7 +328,7 @@ public sealed partial class AlbumViewModel : ViewModelBase, IRefreshable, IDispo
     {
         var favorite = !IsFavorite;
         Item = Item with { UserData = (Item.UserData ?? new UserItemData()) with { IsFavorite = favorite } };
-        try { await navigator.Client.SetFavoriteAsync(id, favorite); }
+        try { await navigator.JellyfinOnly.SetFavoriteAsync(id, favorite); }
         catch (Exception error) when (error is JellyfinException or HttpRequestException or TimeoutException) { }
     }
 
@@ -357,8 +363,8 @@ public sealed partial class ArtistViewModel : ViewModelBase
     [ObservableProperty] public partial string? Message { get; private set; }
 
     public string Title => Item.DisplayTitle;
-    public Uri? Photo => navigator.Client.PosterUrl(Item, width: 600);
-    public Uri? Backdrop => navigator.Client.BackdropUrl(Item, width: 1920) ?? navigator.Client.PosterUrl(Item, width: 800);
+    public Uri? Photo => navigator.JellyfinOnly.PosterUrl(Item, width: 600);
+    public Uri? Backdrop => navigator.JellyfinOnly.BackdropUrl(Item, width: 1920) ?? navigator.JellyfinOnly.PosterUrl(Item, width: 800);
     public string? Genres => Item.Genres is { Count: > 0 } genres ? string.Join(" · ", genres.Take(3)) : null;
     public string? Overview => string.IsNullOrEmpty(Item.Overview) ? null : Item.Overview;
     public bool IsFavorite => Item.UserData?.IsFavorite == true;
@@ -367,8 +373,8 @@ public sealed partial class ArtistViewModel : ViewModelBase
     {
         try
         {
-            var full = navigator.Client.ItemAsync(id);
-            Albums = (await navigator.Client.ArtistAlbumsAsync(id)).Select(a => ItemCard.Square(navigator, a)).ToList();
+            var full = navigator.JellyfinOnly.ItemAsync(id);
+            Albums = (await navigator.JellyfinOnly.ArtistAlbumsAsync(id)).Select(a => ItemCard.Square(navigator, a)).ToList();
             Item = await full;
             Message = Albums.Count == 0 ? "No albums found" : null;
         }
@@ -381,9 +387,9 @@ public sealed partial class ArtistViewModel : ViewModelBase
     private async Task PlayAllAsync(bool shuffled)
     {
         IReadOnlyList<BaseItem> songs;
-        try { songs = await navigator.Client.ArtistTracksAsync(id); }
+        try { songs = await navigator.JellyfinOnly.ArtistTracksAsync(id); }
         catch (Exception error) when (error is JellyfinException or HttpRequestException or TimeoutException) { return; }
-        navigator.Audio.Music.Play(songs, shuffled ? Random.Shared.Next(Math.Max(songs.Count, 1)) : 0, shuffled, navigator.Client);
+        navigator.Audio.Music.Play(songs, shuffled ? Random.Shared.Next(Math.Max(songs.Count, 1)) : 0, shuffled, navigator.JellyfinOnly);
     }
 
     [RelayCommand] private Task PlayAsync() => PlayAllAsync(shuffled: false);
@@ -392,7 +398,7 @@ public sealed partial class ArtistViewModel : ViewModelBase
     [RelayCommand]
     private async Task InstantMixAsync()
     {
-        try { navigator.Audio.Music.Play(await navigator.Client.InstantMixAsync(id), 0, shuffled: false, navigator.Client); }
+        try { navigator.Audio.Music.Play(await navigator.JellyfinOnly.InstantMixAsync(id), 0, shuffled: false, navigator.JellyfinOnly); }
         catch (Exception error) when (error is JellyfinException or HttpRequestException or TimeoutException) { }
     }
 
@@ -401,7 +407,7 @@ public sealed partial class ArtistViewModel : ViewModelBase
     {
         var favorite = !IsFavorite;
         Item = Item with { UserData = (Item.UserData ?? new UserItemData()) with { IsFavorite = favorite } };
-        try { await navigator.Client.SetFavoriteAsync(id, favorite); }
+        try { await navigator.JellyfinOnly.SetFavoriteAsync(id, favorite); }
         catch (Exception error) when (error is JellyfinException or HttpRequestException or TimeoutException) { }
     }
 

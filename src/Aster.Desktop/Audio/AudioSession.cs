@@ -2,6 +2,7 @@ using System;
 using System.ComponentModel;
 using System.Linq;
 using Aster.Core.Jellyfin;
+using Aster.Core.Server;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
@@ -16,9 +17,9 @@ namespace Aster.Desktop.Audio;
 /// </summary>
 public sealed partial class AudioSession : ObservableObject, IDisposable
 {
-    private readonly JellyfinClient client;
+    private readonly IMediaServer client;
 
-    public AudioSession(JellyfinClient client)
+    public AudioSession(IMediaServer client)
     {
         this.client = client;
         // Starting one stops the other.

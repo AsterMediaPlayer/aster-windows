@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Globalization;
 using System.Text.Json;
 using Aster.Core.Jellyfin;
+using Aster.Core.Server;
 
 namespace Aster.Core.Anime;
 
@@ -61,7 +62,7 @@ public static class AnimeThemesLookup
     /// The episode's openings and endings, for a server without the OP/ED
     /// plugin: only for anime (matched by Shoko, or with OP/ED chapters).
     /// </summary>
-    public static async Task<IReadOnlyList<KnownTheme>> ForEpisodeAsync(BaseItem item, JellyfinClient client, CancellationToken ct = default)
+    public static async Task<IReadOnlyList<KnownTheme>> ForEpisodeAsync(BaseItem item, IMediaServer client, CancellationToken ct = default)
     {
         if (item.Kind != ItemKind.Episode || item.SeriesName is not { } seriesName
             || !(item.IsAnime || OpeningsEndings.Find([item]).Count > 0)) return [];

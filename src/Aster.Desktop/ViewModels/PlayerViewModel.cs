@@ -20,6 +20,7 @@ using Aster.Core;
 using Aster.Core.Anime;
 using Aster.Core.Jellyfin;
 using Aster.Core.Playback;
+using Aster.Core.Server;
 using Aster.Desktop.Images;
 using Aster.Mpv;
 using Avalonia.Media;

@@ -99,5 +99,5 @@ public partial class HomeViewModel : ViewModelBase, IRefreshable
         if (refreshWanted) Refresh();
     }
 
-    private static Task<IReadOnlyList<BaseItem>> OrEmpty(Task<List<BaseItem>> request) => AnimeCatalog.OrEmpty(request);
+    private static Task<IReadOnlyList<BaseItem>> OrEmpty(Task<IReadOnlyList<BaseItem>> request) => AnimeCatalog.OrEmpty(request);
 }

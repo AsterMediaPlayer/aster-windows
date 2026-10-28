@@ -7,6 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Aster.Core;
 using Aster.Core.Jellyfin;
+using Aster.Core.Server;
 using Aster.Mpv;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -29,7 +30,7 @@ public sealed partial class ThemePlayer : ObservableObject, IDisposable
     /// <summary>mpv's volume is cubic: 70 is the Apple app's 0.35.</summary>
     private const double Volume = 70;
 
-    private readonly JellyfinClient client;
+    private readonly IMediaServer client;
     private readonly AudioSession audio;
 
     /// <summary>The series (or title) whose theme is loaded.</summary>
@@ -65,7 +66,7 @@ public sealed partial class ThemePlayer : ObservableObject, IDisposable
     private DispatcherTimer? hiding;
     private bool suspended;
 
-    public ThemePlayer(JellyfinClient client, AudioSession audio)
+    public ThemePlayer(IMediaServer client, AudioSession audio)
     {
         this.client = client;
         this.audio = audio;
@@ -128,11 +129,13 @@ public sealed partial class ThemePlayer : ObservableObject, IDisposable
 
     private async Task LoadAsync(string itemId, string themeKey, bool wantsMusic, bool wantsVideo, CancellationToken ct)
     {
+        // Theme songs and videos are Jellyfin's (and Emby's).
+        if (client is not JellyfinClient jellyfin) return;
         BaseItem? song = null, video = null;
         try
         {
-            var songs = wantsMusic ? client.ThemeSongsAsync(itemId, ct) : null;
-            var videos = wantsVideo ? client.ThemeVideosAsync(itemId, ct) : null;
+            var songs = wantsMusic ? jellyfin.ThemeSongsAsync(itemId, ct) : null;
+            var videos = wantsVideo ? jellyfin.ThemeVideosAsync(itemId, ct) : null;
             if (songs is not null) song = (await songs).FirstOrDefault();
             if (videos is not null) video = (await videos).FirstOrDefault();
         }
@@ -141,10 +144,10 @@ public sealed partial class ThemePlayer : ObservableObject, IDisposable
             return;
         }
         if (ct.IsCancellationRequested || key != themeKey) return;
-        if (song is not null) StartMusic(client.AudioStreamUrl(song.Id));
+        if (song is not null) StartMusic(jellyfin.AudioStreamUrl(song.Id));
         if (video is not null)
         {
-            videoSource = new VideoSource(client.VideoStreamUrl(video.Id));
+            videoSource = new VideoSource(jellyfin.VideoStreamUrl(video.Id));
             if (!suspended) StartVideo(videoSource);
         }
     }
