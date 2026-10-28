@@ -70,8 +70,8 @@
 
                 <!-- Audio & Subtitles: the user's Jellyfin settings, once they're in. -->
                 <StackPanel IsVisible="{Binding $parent[UserControl].((vm:SettingsPageViewModel)DataContext).IsAudioSubtitles}">
-                    <TextBlock Classes="section" Text="AUDIO" />
-                    <Button Classes="row" IsEnabled="{Binding HasConfiguration}" AutomationProperties.Name="Preferred audio language">
+                    <TextBlock Classes="section" Text="AUDIO" IsVisible="{Binding KeepsLanguages}" />
+                    <Button Classes="row" IsEnabled="{Binding HasConfiguration}" IsVisible="{Binding KeepsLanguages}" AutomationProperties.Name="Preferred audio language">
                         <DockPanel>
                             <TextBlock Classes="chevron" />
                             <TextBlock Classes="value" Text="{Binding AudioLanguage.Title}" />
@@ -82,8 +82,8 @@
                         </Button.Flyout>
                     </Button>
 
-                    <TextBlock Classes="section" Text="SUBTITLES" />
-                    <Button Classes="row" IsEnabled="{Binding HasConfiguration}" AutomationProperties.Name="Preferred subtitle language">
+                    <TextBlock Classes="section" Text="SUBTITLES" IsVisible="{Binding KeepsLanguages}" />
+                    <Button Classes="row" IsEnabled="{Binding HasConfiguration}" IsVisible="{Binding KeepsLanguages}" AutomationProperties.Name="Preferred subtitle language">
                         <DockPanel>
                             <TextBlock Classes="chevron" />
                             <TextBlock Classes="value" Text="{Binding SubtitleLanguage.Title}" />
@@ -93,7 +93,7 @@
                             <MenuFlyout Placement="BottomEdgeAlignedRight" ItemsSource="{Binding SubtitleLanguageChoices}" ItemContainerTheme="{StaticResource SettingChoice}" />
                         </Button.Flyout>
                     </Button>
-                    <Button Classes="row" IsEnabled="{Binding HasConfiguration}" AutomationProperties.Name="Subtitles">
+                    <Button Classes="row" IsEnabled="{Binding HasConfiguration}" IsVisible="{Binding KeepsLanguages}" AutomationProperties.Name="Subtitles">
                         <DockPanel>
                             <TextBlock Classes="chevron" />
                             <TextBlock Classes="value" Text="{Binding SubtitleModeChoice.Title}" />

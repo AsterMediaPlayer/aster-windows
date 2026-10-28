@@ -210,7 +210,12 @@ public sealed partial class SettingsViewModel : ViewModelBase
     [NotifyPropertyChangedFor(nameof(LanguageNote))]
     public partial string? ConfigurationError { get; set; }
 
-    public string LanguageNote => ConfigurationError is { } error
+    /// <summary>The languages are the Jellyfin (or Emby) user's own settings; Plex keeps its own.</summary>
+    public bool KeepsLanguages => navigator.Jellyfin is not null;
+
+    public string LanguageNote => !KeepsLanguages
+        ? "On Plex, the preferred audio and subtitle languages are your Plex profile's own: choose them in Plex's own settings for your account."
+        : ConfigurationError is { } error
         ? $"Your Jellyfin settings couldn't be loaded: {error}"
         : HasConfiguration
             ? "Synced with your Jellyfin profile, so the web app and this PC make the same choices. A title's own Audio & Subtitles menu overrides them for that title."

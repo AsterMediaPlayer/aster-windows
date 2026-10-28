@@ -5,6 +5,7 @@ using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using Aster.Core.Jellyfin;
+using Aster.Core.Server;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
@@ -15,13 +16,16 @@ public sealed record ServerChoice(string Name, string Detail, IRelayCommand Use)
 
 public partial class SignInViewModel : ViewModelBase
 {
-    private readonly Action<JellyfinClient, StoredSession> signedIn;
+    private readonly Action<IMediaServer, StoredSession> signedIn;
+    private readonly Action signInWithPlex;
     private CancellationTokenSource? quickConnect;
 
     /// <param name="servers">The servers already signed in to, to go back to one without typing it.</param>
-    public SignInViewModel(Action<JellyfinClient, StoredSession> signedIn, IReadOnlyList<SavedServer> servers, Action<SavedServer> switchTo)
+    /// <param name="signInWithPlex">Opens Plex's sign-in, through plex.tv rather than a server's address.</param>
+    public SignInViewModel(Action<IMediaServer, StoredSession> signedIn, IReadOnlyList<SavedServer> servers, Action<SavedServer> switchTo, Action signInWithPlex)
     {
         this.signedIn = signedIn;
+        this.signInWithPlex = signInWithPlex;
         Servers = servers.Select(s => new ServerChoice(s.Name, $"{s.Session.Kind} · {s.Session.UserName}", new RelayCommand(() => switchTo(s)))).ToList();
     }
 
@@ -143,6 +147,14 @@ public partial class SignInViewModel : ViewModelBase
             if (quickConnect == cancel) quickConnect = null;
             cancel.Dispose();
         }
+    }
+
+    /// <summary>Plex is found through plex.tv, not by its address.</summary>
+    [RelayCommand]
+    private void SignInWithPlex()
+    {
+        CancelQuickConnect();
+        signInWithPlex();
     }
 
     [RelayCommand]

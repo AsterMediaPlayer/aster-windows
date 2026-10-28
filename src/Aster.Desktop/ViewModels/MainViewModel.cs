@@ -99,14 +99,22 @@ public partial class MainViewModel : ViewModelBase, IServerAccounts
         shell = null;
         ImageLoader.Client = null;
         CurrentId = null;
-        CurrentPage = new SignInViewModel(SignedIn, Servers, SwitchTo) { Message = message, ServerAddress = serverAddress ?? "" };
+        CurrentPage = new SignInViewModel(SignedIn, Servers, SwitchTo, ShowPlexSignIn) { Message = message, ServerAddress = serverAddress ?? "" };
     }
 
+    /// <summary>Plex's sign-in, through plex.tv; Cancel comes back to the sign-in screen.</summary>
+    public void ShowPlexSignIn() =>
+        CurrentPage = new PlexSignInViewModel(session =>
+        {
+            session.Save();
+            SignedIn(MediaServers.For(session), session);
+        }, () => ShowSignIn());
+
     /// <summary>A sign-in that worked: kept with the others, and used.</summary>
-    private void SignedIn(JellyfinClient client, StoredSession session)
+    private void SignedIn(IMediaServer client, StoredSession session)
     {
         // Signing in afresh is as good as the password.
-        if (LockedId == SavedServer.IdOf(session.ServerUrl, session.UserId)) Unlocked();
+        if (LockedId == SavedServer.IdOf(session)) Unlocked();
         Servers = SavedServers.Remember(Servers, session);
         SavedServers.Save(Servers);
         ShowShell(client, session);
@@ -117,7 +125,7 @@ public partial class MainViewModel : ViewModelBase, IServerAccounts
         // Another server's: what the last one was showing and playing goes.
         shell?.Dispose();
         ImageLoader.Client = client;
-        CurrentId = developmentSession ? null : SavedServer.IdOf(session.ServerUrl, session.UserId);
+        CurrentId = developmentSession ? null : SavedServer.IdOf(session);
         shell = new ShellViewModel(client, session, (entry, closed) => Play(client, entry, closed),
             // Disc menus come from Aster's Jellyfin plugin.
             (document, itemId, closed) => ShowDiscMenu((JellyfinClient)client, document, itemId, closed), kind => SignOutAsync(client, kind), this);

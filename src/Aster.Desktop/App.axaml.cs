@@ -37,6 +37,10 @@ public partial class App : Application
                 && System.Enum.TryParse<Aster.Core.Browsing.LibrarySort>(args[so + 1], ignoreCase: true, out var sorted) ? sorted : (Aster.Core.Browsing.LibrarySort?)null;
             var section = System.Array.IndexOf(args, "--section") is var se and >= 0 && se + 1 < args.Length ? args[se + 1] : null;
             var main = new MainViewModel(play, bitrate, start, open, tab, sort, section);
+#if DEBUG
+            // --plex-sign-in: straight to Plex's sign-in, for trying it.
+            if (System.Array.IndexOf(args, "--plex-sign-in") >= 0) main.ShowPlexSignIn();
+#endif
             desktop.MainWindow = new MainWindow { DataContext = main };
             // Game controllers, as the keys.
             var gamepads = Aster.Desktop.Input.Gamepads.Start(desktop.MainWindow);

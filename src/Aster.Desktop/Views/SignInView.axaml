@@ -23,6 +23,10 @@
                 IsVisible="{Binding !IsQuickConnecting}"
                 HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" />
 
+        <Button Content="Sign in with Plex" Command="{Binding SignInWithPlexCommand}"
+                IsVisible="{Binding !IsQuickConnecting}" Margin="0,8,0,0"
+                HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" />
+
         <StackPanel Spacing="8" Margin="0,16,0,0" IsVisible="{Binding IsQuickConnecting}">
             <TextBlock Text="Enter this code in Jellyfin on another device, under your user menu ▸ Quick Connect"
                        TextWrapping="Wrap" TextAlignment="Center" Opacity="0.7" />

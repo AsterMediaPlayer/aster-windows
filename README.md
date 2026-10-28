@@ -67,6 +67,7 @@ These leave the saved session alone:
 - `ASTER_SERVER`, `ASTER_TOKEN` (an API key or access token) and
   `ASTER_USER_ID` sign in for that run; `ASTER_SERVER_KIND=emby` or `plex`
   for an Emby or Plex server (with a Plex token, and any user id).
+- `--plex-sign-in` opens Plex's sign-in straight away.
 - `--open <itemId>` opens a title's (or library's, or person's) page.
 - `--tab <search|movies|shows|anime|music|audiobooks|upcoming|livetv|channels|library|settings>` starts on a tab; `--sort <Name|DateAdded|ReleaseDate|Rating>` sorts it, and on Live TV `--section <on-now|guide|channels|recordings>` picks its section.
 - Signing out of such a session only ends it; the saved sign-in is left alone.
@@ -421,9 +422,20 @@ seasons, episodes, related titles and extras, search, and marking watched.
 Plex keeps no favourites, so they're hidden; its music, Live TV and the
 Jellyfin plugins' pages aren't offered.
 
-Still to come: signing in with a Plex account (plex.tv/link, the account's
-servers and Home profiles), playing, and locking with the Home PIN. Until
-then a debug build signs in with a token (`ASTER_SERVER_KIND=plex`).
+Signing in: Sign in with Plex on the sign-in screen shows a code to enter
+at plex.tv/link, then who's watching (a Plex Home's profiles, with a PIN
+where one is set), then which server (only when the account has more than
+one, its own first), then tries every address plex.tv lists for it at once,
+home network first, and keeps the first that answers. The sign-in is kept
+with its plex.tv side (the server's id, its addresses and the Home profile),
+and a Plex server is known by its id, since the address used to reach it
+can change. Credential Manager keeps 2,560 bytes an entry, so a longer
+secret (a Plex sign-in is) goes in numbered parts. On Plex, Settings leaves
+out what Plex keeps itself (the preferred languages) or doesn't have.
+
+Still to come: playing, finding the server again when its saved address
+stops answering, and locking with the Home PIN (a Plex server's page offers
+no password or Lock After until then).
 
 ## Differences from the Apple app
 

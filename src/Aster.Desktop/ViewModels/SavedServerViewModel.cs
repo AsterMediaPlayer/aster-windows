@@ -37,6 +37,9 @@ public sealed partial class SavedServerViewModel : ViewModelBase
     public bool IsInUse => server.Id == accounts.CurrentId;
     public bool IsOther => !IsInUse;
 
+    /// <summary>A password to switch, and Lock After, are checked by Jellyfin and Emby; a Plex server's Home PIN comes later.</summary>
+    public bool CanLock => server.Session.Kind != Aster.Core.Jellyfin.ServerKind.Plex;
+
     public string AsksNote => $"Switching to this server asks for {UserName}'s password first, checked by the server, so others on this computer can't switch to it.";
 
     public string LockNote => $"After this long away from Aster (its window in the background, minimized or closed), coming back to this server asks for {UserName}'s password. Time watching a video doesn't count.";

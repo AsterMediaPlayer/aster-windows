@@ -41,30 +41,32 @@
                 <Button Classes="row" Command="{Binding SwitchCommand}" IsVisible="{Binding IsOther}">
                     <TextBlock Text="Switch to This Server" VerticalAlignment="Center" />
                 </Button>
-                <Button Classes="row" Command="{Binding FlipAsksPasswordCommand}">
-                    <DockPanel>
-                        <TextBlock Classes="value" Text="{Binding AsksPasswordToSwitch, Converter={x:Static c:Converters.OnOff}}" />
-                        <TextBlock Text="Ask for password to switch" VerticalAlignment="Center" />
-                    </DockPanel>
-                </Button>
-                <Border Classes="note">
-                    <TextBlock Text="{Binding AsksNote}" />
-                </Border>
+                <StackPanel IsVisible="{Binding CanLock}">
+                    <Button Classes="row" Command="{Binding FlipAsksPasswordCommand}">
+                        <DockPanel>
+                            <TextBlock Classes="value" Text="{Binding AsksPasswordToSwitch, Converter={x:Static c:Converters.OnOff}}" />
+                            <TextBlock Text="Ask for password to switch" VerticalAlignment="Center" />
+                        </DockPanel>
+                    </Button>
+                    <Border Classes="note">
+                        <TextBlock Text="{Binding AsksNote}" />
+                    </Border>
 
-                <TextBlock Classes="section" Text="LOCK" />
-                <Button Classes="row" AutomationProperties.Name="Lock After">
-                    <DockPanel>
-                        <TextBlock Classes="chevron" />
-                        <TextBlock Classes="value" Text="{Binding LockAfterTitle}" />
-                        <TextBlock Text="Lock After" VerticalAlignment="Center" />
-                    </DockPanel>
-                    <Button.Flyout>
-                        <MenuFlyout Placement="BottomEdgeAlignedRight" ItemsSource="{Binding LockAfterChoices}" ItemContainerTheme="{StaticResource SettingChoice}" />
-                    </Button.Flyout>
-                </Button>
-                <Border Classes="note">
-                    <TextBlock Text="{Binding LockNote}" />
-                </Border>
+                    <TextBlock Classes="section" Text="LOCK" />
+                    <Button Classes="row" AutomationProperties.Name="Lock After">
+                        <DockPanel>
+                            <TextBlock Classes="chevron" />
+                            <TextBlock Classes="value" Text="{Binding LockAfterTitle}" />
+                            <TextBlock Text="Lock After" VerticalAlignment="Center" />
+                        </DockPanel>
+                        <Button.Flyout>
+                            <MenuFlyout Placement="BottomEdgeAlignedRight" ItemsSource="{Binding LockAfterChoices}" ItemContainerTheme="{StaticResource SettingChoice}" />
+                        </Button.Flyout>
+                    </Button>
+                    <Border Classes="note">
+                        <TextBlock Text="{Binding LockNote}" />
+                    </Border>
+                </StackPanel>
 
                 <!-- Not the one in use: Sign Out of it is on Account. -->
                 <Button Classes="row" Margin="0,24,0,0" IsVisible="{Binding IsOther}">
