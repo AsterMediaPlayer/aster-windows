@@ -140,6 +140,9 @@ public interface IServerAccounts
 
     /// <summary>Forgets a saved server (not the one in use), signing it out.</summary>
     void Remove(string id);
+
+    /// <summary>Plex's sign-in, to pick a Home profile afresh; Cancel comes back.</summary>
+    void SignInWithPlexAgain();
 }
 
 /// <summary>

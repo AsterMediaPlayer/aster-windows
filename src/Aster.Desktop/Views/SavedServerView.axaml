@@ -45,7 +45,7 @@
                     <Button Classes="row" Command="{Binding FlipAsksPasswordCommand}">
                         <DockPanel>
                             <TextBlock Classes="value" Text="{Binding AsksPasswordToSwitch, Converter={x:Static c:Converters.OnOff}}" />
-                            <TextBlock Text="Ask for password to switch" VerticalAlignment="Center" />
+                            <TextBlock Text="{Binding AskTitle}" VerticalAlignment="Center" />
                         </DockPanel>
                     </Button>
                     <Border Classes="note">
@@ -65,6 +65,14 @@
                     </Button>
                     <Border Classes="note">
                         <TextBlock Text="{Binding LockNote}" />
+                    </Border>
+                </StackPanel>
+                <StackPanel IsVisible="{Binding OffersPlexSignIn}">
+                    <Button Classes="row" Command="{Binding SignInWithPlexAgainCommand}">
+                        <TextBlock Text="Sign In with Plex Again" VerticalAlignment="Center" />
+                    </Button>
+                    <Border Classes="note">
+                        <TextBlock Text="{Binding PlexSignInNote}" />
                     </Border>
                 </StackPanel>
 

@@ -241,9 +241,20 @@ public sealed record SavedServer
         _ => $"{minutes} Minutes",
     };
 
+    /// <summary>What switching and Lock After ask for: the user's password on the server, or a Plex Home profile's PIN.</summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public string CredentialName => Session.Kind == ServerKind.Plex ? "PIN" : "password";
+
+    /// <summary>
+    /// Whether there's anything to ask for: a Plex profile without a PIN, or
+    /// signed in without the Home's token (which checks it), can't be locked.
+    /// </summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public bool CanBeLocked => Session.Kind != ServerKind.Plex || (Session.Plex is { HomeUserHasPin: true, HomeToken: not null, HomeUserUuid: not null });
+
     /// <summary>Whether coming back at <paramref name="now"/>, having left at <paramref name="leftAt"/>, asks for the password.</summary>
     public bool LocksAfter(DateTimeOffset? leftAt, DateTimeOffset now) =>
-        LockAfterMinutes is { } minutes && leftAt is { } left && now - left >= TimeSpan.FromMinutes(minutes);
+        CanBeLocked && LockAfterMinutes is { } minutes && leftAt is { } left && now - left >= TimeSpan.FromMinutes(minutes);
 
     /// <summary>
     /// Checks the password with the server itself, for switching to it or
@@ -252,6 +263,23 @@ public sealed record SavedServer
     /// </summary>
     public async Task<StoredSession> SignInAgainAsync(string password, CancellationToken ct = default)
     {
+        // Plex: the Home profile's PIN, checked by plex.tv by switching to it.
+        if (Session.Kind == ServerKind.Plex)
+        {
+            if (Session.Plex is not { HomeUserUuid: { } uuid, HomeToken: { } homeToken } link) throw JellyfinException.Explained(null, Plex.PlexErrors.NotBuilt);
+            // plex.tv lets a profile switch to itself with no PIN at all, so an empty one is never sent.
+            if (password.Length == 0) throw JellyfinException.Explained(null, Plex.PlexErrors.PinNeeded);
+            Plex.PlexAccountUser switched;
+            try
+            {
+                switched = await Plex.PlexAccount.SwitchUserAsync(new Plex.PlexHomeUser { Uuid = uuid, Title = Session.UserName }, password, homeToken, ct).ConfigureAwait(false);
+            }
+            catch (JellyfinException refused) when (refused.StatusCode is 401 or 403)
+            {
+                throw JellyfinException.Explained(401, Plex.PlexErrors.WrongPin);
+            }
+            return Session with { Plex = link with { AccountToken = switched.AuthToken ?? link.AccountToken } };
+        }
         var server = new JellyfinClient(Session.ServerUrl, kind: Session.Kind);
         var result = await server.AuthenticateAsync(Session.UserName, password, ct);
         return Session with { UserId = result.User.Id, UserName = result.User.Name, AccessToken = result.AccessToken };

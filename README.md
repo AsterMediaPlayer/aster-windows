@@ -407,7 +407,7 @@ isn't shown there; the player has its own keys.
 
 Not yet: Add to Playlist, downloads, and the sleep timer.
 
-## Plex (in progress)
+## Plex
 
 Plex is being ported from the Apple app in steps. Every screen asks the
 server through `IMediaServer`, so a Plex server's titles show on the same
@@ -449,9 +449,17 @@ first half "Intro"). Closing the app waits a moment for the stop report,
 which otherwise went unsent (Jellyfin's too). Not yet on Plex: scrubbing
 previews, chapter pictures, and the Openings & Endings tab's clips.
 
-Still to come: finding the server again when its saved address stops
-answering, and locking with the Home PIN (a Plex server's page offers no
-password or Lock After until then).
+Locking: asking to switch, and Lock After, ask for the Plex Home profile's
+PIN, which plex.tv checks by switching to the profile with the Home's own
+token (an empty PIN is never sent: plex.tv lets a profile switch to itself
+without one). A profile without a PIN, or a sign-in from before the Home's
+token was kept, can't be locked; its page offers Sign In with Plex Again.
+
+Finding the server again (`PlexReconnect`): on opening and on coming back
+to the window, if the saved address doesn't answer within four seconds,
+every other address saved for the server is tried at once, then plex.tv's
+latest list, and the first that answers takes over (the app starts afresh
+on it).
 
 ## Differences from the Apple app
 

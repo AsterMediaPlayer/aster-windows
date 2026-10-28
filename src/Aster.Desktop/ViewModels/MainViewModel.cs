@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Aster.Core.Jellyfin;
 using Aster.Core.Playback;
+using Aster.Core.Plex;
 using Aster.Core.Server;
 using Aster.Desktop.Images;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -62,7 +63,7 @@ public partial class MainViewModel : ViewModelBase, IServerAccounts
             if (section is not null && shell!.CurrentPage is LiveTVViewModel live) live.ShowSection(section);
             if (openItemId is not null) _ = OpenByIdAsync(client, openItemId);
             if (playItemId is not null) _ = PlayByIdAsync(client, playItemId, maxBitrate, startSeconds);
-            // Closed while away, or while locked: it's still locked.
+            // Closed while away, or while locked: it's still locked (or its Plex address is looked into).
             CheckLock();
         }
         else
@@ -110,6 +111,18 @@ public partial class MainViewModel : ViewModelBase, IServerAccounts
             SignedIn(MediaServers.For(session), session);
         }, () => ShowSignIn());
 
+    /// <summary>Plex's sign-in from a saved Plex server's page, to pick its Home profile afresh; Cancel comes back to the page.</summary>
+    public void SignInWithPlexAgain()
+    {
+        var back = CurrentPage;
+        CurrentPage = new PlexSignInViewModel(session =>
+        {
+            session.Save();
+            developmentSession = false;
+            SignedIn(MediaServers.For(session), session);
+        }, () => CurrentPage = back);
+    }
+
     /// <summary>A sign-in that worked: kept with the others, and used.</summary>
     private void SignedIn(IMediaServer client, StoredSession session)
     {
@@ -136,7 +149,7 @@ public partial class MainViewModel : ViewModelBase, IServerAccounts
     public void SwitchTo(SavedServer server)
     {
         if (server.Id == CurrentId) return;
-        if (!server.AsksPasswordToSwitch && server.Id != LockedId)
+        if (!(server.AsksPasswordToSwitch && server.CanBeLocked) && server.Id != LockedId)
         {
             Use(server.Session);
             return;
@@ -199,6 +212,35 @@ public partial class MainViewModel : ViewModelBase, IServerAccounts
             return;
         }
         AwayClock.Clear();
+        _ = FindPlexAgainAsync();
+    }
+
+    // ---- Plex's address ----
+
+    private bool findingPlex;
+
+    /// <summary>
+    /// On opening and on coming back: when a Plex server's saved address has
+    /// stopped answering (this computer on another network, the server's
+    /// address changed), another that answers takes over, and the app starts
+    /// afresh on it. The Apple app's refreshPlexConnection.
+    /// </summary>
+    private async Task FindPlexAgainAsync()
+    {
+        if (findingPlex || shell is null || CurrentServer?.Session is not { Plex: not null } stored) return;
+        findingPlex = true;
+        try
+        {
+            if (await PlexReconnect.FindAgainAsync(stored) is not { } found) return;
+            // Signed out, switched or locked meanwhile: leave it.
+            if (shell is null || CurrentId != SavedServer.IdOf(found)) return;
+            System.Diagnostics.Debug.WriteLine($"Plex: now reached at {found.ServerUrl}");
+            Use(found);
+        }
+        finally
+        {
+            findingPlex = false;
+        }
     }
 
     /// <summary>Asks for the password to carry on: what was showing and playing goes.</summary>

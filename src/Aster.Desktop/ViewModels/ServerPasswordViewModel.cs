@@ -19,8 +19,13 @@ public sealed partial class ServerPasswordViewModel(SavedServer server, bool loc
     public bool IsLock => locking;
 
     public string Prompt => locking
-        ? $"Enter {server.Session.UserName}'s password to carry on."
-        : $"Enter {server.Session.UserName}'s password to switch to this {server.Session.Kind} server.";
+        ? $"Enter {server.Session.UserName}'s {Credential} to carry on."
+        : $"Enter {server.Session.UserName}'s {Credential} to switch to this {server.Session.Kind} server.";
+
+    /// <summary>"password", or a Plex Home profile's "Plex Home PIN".</summary>
+    private string Credential => server.Session.Kind == ServerKind.Plex ? "Plex Home PIN" : "password";
+
+    public string Placeholder => server.Session.Kind == ServerKind.Plex ? "PIN" : "Password";
 
     public string ActionTitle => locking ? "Unlock" : "Switch";
     public string OtherTitle => locking ? "Use Another Server" : "Cancel";
@@ -51,6 +56,8 @@ public sealed partial class ServerPasswordViewModel(SavedServer server, bool loc
         {
             Message = error switch
             {
+                // Plex's are already in words: a wrong PIN, or plex.tv not answering.
+                JellyfinException when server.Session.Kind == ServerKind.Plex => error.Message,
                 JellyfinException { StatusCode: 401 } => "That password didn't work.",
                 HttpRequestException => $"Couldn't reach the server: {error.Message}",
                 _ => $"That password didn't work. {error.Message}",

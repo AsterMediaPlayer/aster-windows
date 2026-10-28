@@ -37,12 +37,23 @@ public sealed partial class SavedServerViewModel : ViewModelBase
     public bool IsInUse => server.Id == accounts.CurrentId;
     public bool IsOther => !IsInUse;
 
-    /// <summary>A password to switch, and Lock After, are checked by Jellyfin and Emby; a Plex server's Home PIN comes later.</summary>
-    public bool CanLock => server.Session.Kind != Aster.Core.Jellyfin.ServerKind.Plex;
+    /// <summary>A password to switch, and Lock After: checked by Jellyfin and Emby, or by plex.tv as the Plex Home profile's PIN.</summary>
+    public bool CanLock => server.CanBeLocked;
 
-    public string AsksNote => $"Switching to this server asks for {UserName}'s password first, checked by the server, so others on this computer can't switch to it.";
+    /// <summary>A Plex profile with nothing to ask for: its page offers signing in again instead (to a profile with a PIN, or one set since).</summary>
+    public bool OffersPlexSignIn => !server.CanBeLocked;
 
-    public string LockNote => $"After this long away from Aster (its window in the background, minimized or closed), coming back to this server asks for {UserName}'s password. Time watching a video doesn't count.";
+    private bool IsPlex => server.Session.Kind == ServerKind.Plex;
+
+    private string Credential => IsPlex ? $"{UserName}'s Plex Home PIN" : $"{UserName}'s password";
+
+    public string AskTitle => $"Ask for {server.CredentialName} to switch";
+
+    public string AsksNote => $"Switching to this server asks for {Credential} first, checked by {(IsPlex ? "plex.tv" : "the server")}, so others on this computer can't switch to it.";
+
+    public string LockNote => $"After this long away from Aster (its window in the background, minimized or closed), coming back to this server asks for {Credential}. Time watching a video doesn't count.";
+
+    public string PlexSignInNote => $"Asking for a PIN to switch, and Lock After, need a Plex Home profile with a PIN. If {UserName} has one now (set at plex.tv), sign in with Plex again to use it.";
 
     [ObservableProperty]
     public partial bool AsksPasswordToSwitch { get; set; }
@@ -71,6 +82,8 @@ public sealed partial class SavedServerViewModel : ViewModelBase
     }
 
     [RelayCommand] private void FlipAsksPassword() => AsksPasswordToSwitch = !AsksPasswordToSwitch;
+
+    [RelayCommand] private void SignInWithPlexAgain() => accounts.SignInWithPlexAgain();
 
     /// <summary>The app starts afresh on it (after its password, when it asks).</summary>
     [RelayCommand] private void Switch() => accounts.SwitchTo(server);

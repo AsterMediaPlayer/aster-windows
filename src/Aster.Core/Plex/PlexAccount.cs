@@ -176,6 +176,52 @@ public static class PlexAccount
 }
 
 /// <summary>
+/// A Plex server's saved address can stop answering (this computer on
+/// another network, the server's address changed): its other addresses are
+/// tried, then plex.tv's latest list, and the first that answers takes over.
+/// </summary>
+public static class PlexReconnect
+{
+    /// <summary>How long the saved address has to answer before the others are tried.</summary>
+    public static readonly TimeSpan SavedAddressWait = TimeSpan.FromSeconds(4);
+
+    /// <summary>The sign-in with the address that answers now; null when the saved one still does, or none does.</summary>
+    public static async Task<StoredSession?> FindAgainAsync(StoredSession stored, CancellationToken ct = default)
+    {
+        if (stored.Plex is not { } link) return null;
+        var token = stored.AccessToken;
+        var saved = new PlexConnectionInfo(stored.ServerUrl, Local: true, Relay: false);
+        if (await PlexConnectionRace.FastestAsync([saved], token, SavedAddressWait, ct).ConfigureAwait(false) is not null) return null;
+
+        var connections = link.Connections;
+        var serverToken = token;
+        var reached = await PlexConnectionRace.FastestAsync(connections, token, ct: ct).ConfigureAwait(false);
+        if (reached is null)
+        {
+            try
+            {
+                var servers = await PlexAccount.ServersAsync(link.AccountToken, ct).ConfigureAwait(false);
+                if (servers.FirstOrDefault(s => s.ClientIdentifier == link.MachineId) is { } server)
+                {
+                    connections = server.RankedConnections;
+                    serverToken = server.AccessToken ?? token;
+                    reached = await PlexConnectionRace.FastestAsync(connections, serverToken, ct: ct).ConfigureAwait(false);
+                }
+            }
+            catch (Exception error) when (error is JellyfinException or HttpRequestException or TaskCanceledException) { }
+        }
+        System.Diagnostics.Debug.WriteLine($"Plex: {stored.ServerUrl} isn't answering; {(reached is null ? "no other address does" : $"{reached.Uri} does")}");
+        if (reached is null || reached.Uri == stored.ServerUrl) return null;
+        return stored with
+        {
+            ServerUrl = reached.Uri,
+            AccessToken = serverToken,
+            Plex = link with { Connections = connections },
+        };
+    }
+}
+
+/// <summary>
 /// Finds which of a server's addresses answers. All are tried at once: a
 /// server can list a dozen addresses (one per network it's on), most of which
 /// don't answer from here, and one at a time would take minutes.

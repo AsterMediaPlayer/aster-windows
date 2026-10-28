@@ -18,6 +18,8 @@ namespace Aster.Core.Plex;
 public static class PlexErrors
 {
     public const string NotBuilt = "This isn't available on Plex yet.";
+    public const string PinNeeded = "Enter the PIN.";
+    public const string WrongPin = "That PIN isn't right.";
 
     public static string Http(int code) => code switch
     {
