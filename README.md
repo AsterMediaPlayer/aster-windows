@@ -482,6 +482,12 @@ album or playlist page (every song on it), and an anime show's Music tab
 playlist or adds to one of the user's of that kind (music or video), then
 goes back. Jellyfin and Emby only: Plex's playlists differ.
 
+**Video playlists** (`VideoPlaylistViewModel`) open on a page of their own:
+Play All and Shuffle play the entries one after another, each from its
+start, and a right click on an entry moves it up or down or takes it out
+(shown at once, put back if the server says no). Music playlists keep the
+album page.
+
 **Sleep timer** (`Audio/SleepTimer`, not in the Apple app): Now Playing's
 clock button pauses the song or book after 15, 30, 45 or 60 minutes, or at
 the end of the song or chapter playing, counting down on the button. Its

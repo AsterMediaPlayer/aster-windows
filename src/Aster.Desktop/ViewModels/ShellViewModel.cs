@@ -357,6 +357,8 @@ public partial class ShellViewModel : ViewModelBase, INavigator, IDisposable
             ItemKind.CollectionFolder or ItemKind.UserView or ItemKind.Folder when item.CollectionType == "books" => new AudiobooksViewModel(this, item) { IsPushed = true },
             ItemKind.MusicAlbum => new AlbumViewModel(this, item),
             ItemKind.Playlist when item.MediaType == "Audio" => new AlbumViewModel(this, item),
+            // A playlist of movies and episodes: Play All, Shuffle, and its entries to reorder.
+            ItemKind.Playlist when item.MediaType == "Video" && Jellyfin is not null => new VideoPlaylistViewModel(this, item),
             ItemKind.MusicArtist => new ArtistViewModel(this, item),
             // A song opens its album, where it can be played in context.
             ItemKind.Audio when item.AlbumId is { } album => new AlbumViewModel(this, new BaseItem { Id = album, Name = item.Album, Type = "MusicAlbum" }),

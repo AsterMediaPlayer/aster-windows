@@ -1,0 +1,89 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Aster.Desktop.ViewModels"
+             xmlns:c="using:Aster.Desktop.Controls"
+             x:Class="Aster.Desktop.Views.VideoPlaylistView"
+             x:DataType="vm:VideoPlaylistViewModel"
+             Background="#141414">
+
+    <!-- A video playlist: Play All, Shuffle, and its entries; right-click one to move or remove it. -->
+    <Panel>
+        <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+            <StackPanel Spacing="24" Margin="64,80,64,60">
+                <DockPanel>
+                    <TextBlock DockPanel.Dock="Right" Text="{Binding Count}" Foreground="{StaticResource Secondary}" VerticalAlignment="Bottom" Margin="0,0,0,6" />
+                    <TextBlock Text="{Binding Title}" FontSize="34" FontWeight="Bold" TextWrapping="Wrap" MaxLines="2" />
+                </DockPanel>
+                <StackPanel Orientation="Horizontal" Spacing="12">
+                    <Button Theme="{StaticResource PillButton}" Classes="prominent" c:KeyFocus.IsPreferred="True" Command="{Binding PlayAllCommand}">
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <TextBlock Text="&#xE768;" FontFamily="{StaticResource IconFont}" VerticalAlignment="Center" />
+                            <TextBlock Text="Play All" />
+                        </StackPanel>
+                    </Button>
+                    <Button Theme="{StaticResource PillButton}" Command="{Binding ShuffleCommand}">
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <TextBlock Text="&#xE8B1;" FontFamily="{StaticResource IconFont}" VerticalAlignment="Center" />
+                            <TextBlock Text="Shuffle" />
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+                <TextBlock Text="{Binding Message}" Foreground="#FF8A80" TextWrapping="Wrap"
+                           IsVisible="{Binding Message, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                <ProgressBar IsIndeterminate="True" Width="160" HorizontalAlignment="Left" IsVisible="{Binding IsLoading}" />
+                <StackPanel Spacing="6" IsVisible="{Binding IsEmpty}" Margin="0,40,0,0">
+                    <TextBlock Text="This playlist is empty" FontSize="20" FontWeight="SemiBold" />
+                    <TextBlock Text="Use Add to Playlist on a movie or episode to fill it." Foreground="{StaticResource Secondary}" />
+                </StackPanel>
+
+                <ItemsControl ItemsSource="{Binding Cards}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <WrapPanel ItemSpacing="24" LineSpacing="28" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:PlaylistVideoCard">
+                            <StackPanel Width="{StaticResource LandscapeWidth}" Spacing="8">
+                                <Button Theme="{StaticResource CardButton}" Command="{Binding Open}"
+                                        Width="{StaticResource LandscapeWidth}" Height="{StaticResource LandscapeHeight}"
+                                        AutomationProperties.Name="{Binding Title}" ToolTip.Tip="{Binding Title}">
+                                    <Button.ContextMenu>
+                                        <ContextMenu ItemsSource="{Binding Actions}">
+                                            <ContextMenu.ItemTemplate>
+                                                <DataTemplate x:DataType="vm:TrackAction">
+                                                    <TextBlock Text="{Binding Title}" />
+                                                </DataTemplate>
+                                            </ContextMenu.ItemTemplate>
+                                            <ContextMenu.ItemContainerTheme>
+                                                <ControlTheme TargetType="MenuItem" BasedOn="{StaticResource {x:Type MenuItem}}" x:DataType="vm:TrackAction">
+                                                    <Setter Property="Command" Value="{Binding Command}" />
+                                                </ControlTheme>
+                                            </ContextMenu.ItemContainerTheme>
+                                        </ContextMenu>
+                                    </Button.ContextMenu>
+                                    <Panel>
+                                        <TextBlock Text="{Binding Placeholder}" FontFamily="{StaticResource IconFont}" FontSize="36" Opacity="0.35"
+                                                   HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                        <c:RemoteImage Url="{Binding Image}" />
+                                    </Panel>
+                                </Button>
+                                <StackPanel Spacing="2">
+                                    <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Text="{Binding Subtitle}" FontSize="12" Foreground="{StaticResource Secondary}" TextTrimming="CharacterEllipsis"
+                                               IsVisible="{Binding Subtitle, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                                </StackPanel>
+                            </StackPanel>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+        </ScrollViewer>
+
+        <Button Command="{Binding BackCommand}" ToolTip.Tip="Back (Alt+←)" AutomationProperties.Name="Back" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="20"
+                Width="40" Height="40" CornerRadius="20" Padding="0" Background="#80000000"
+                HorizontalContentAlignment="Center" VerticalContentAlignment="Center">
+            <TextBlock Text="&#xE72B;" FontFamily="{StaticResource IconFont}" />
+        </Button>
+    </Panel>
+</UserControl>
