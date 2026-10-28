@@ -49,6 +49,12 @@ public sealed record AppSettings
     /// </summary>
     public IReadOnlyList<string> Chosen { get; init; } = [];
 
+    /// <summary>
+    /// The saved servers (<see cref="SavedServer.Id"/>) whose welcome screen,
+    /// what Aster and its companion plugins do, was seen on this computer.
+    /// </summary>
+    public IReadOnlyList<string> WelcomeSeen { get; init; } = [];
+
     /// <summary>Below the top choice, a file over the limit is converted down to it.</summary>
     public bool LimitsQuality => MaxBitrate < 120_000_000;
 

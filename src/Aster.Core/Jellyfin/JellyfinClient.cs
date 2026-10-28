@@ -590,6 +590,44 @@ public sealed class JellyfinClient
     public Task<OpEdLibraries?> OpEdLibrariesAsync(CancellationToken ct = default) =>
         IsJellyfin ? OrNullAsync(() => GetAsync<OpEdLibraries>("/OpEd/Library", ct: ct), ct) : Task.FromResult<OpEdLibraries?>(null);
 
+    // ---- Server plugins (administrators only, but for the probe) ----
+
+    /// <summary>The server's installed plugins.</summary>
+    public Task<List<InstalledPlugin>> InstalledPluginsAsync(CancellationToken ct = default) => GetAsync<List<InstalledPlugin>>("/Plugins", ct: ct);
+
+    /// <summary>The plugin repositories in the server's settings.</summary>
+    public Task<List<PluginRepository>> PluginRepositoriesAsync(CancellationToken ct = default) => GetAsync<List<PluginRepository>>("/Repositories", ct: ct);
+
+    /// <summary>Replaces the server's whole list of plugin repositories.</summary>
+    public Task SetPluginRepositoriesAsync(IReadOnlyList<PluginRepository> repositories, CancellationToken ct = default) =>
+        PostAsync("/Repositories", body: repositories, ct: ct);
+
+    /// <summary>Every plugin the server's repositories offer, fetched by the server.</summary>
+    public Task<List<PluginPackage>> PluginPackagesAsync(CancellationToken ct = default) => GetAsync<List<PluginPackage>>("/Packages", ct: ct);
+
+    /// <summary>Downloads a plugin onto the server: the newest version that runs on it. It loads at the next restart.</summary>
+    public Task InstallPackageAsync(string name, string guid, string repositoryUrl, CancellationToken ct = default) =>
+        PostAsync($"/Packages/Installed/{Uri.EscapeDataString(name)}", new() { ["assemblyGuid"] = guid, ["repositoryUrl"] = repositoryUrl }, ct: ct);
+
+    /// <summary>Turns an installed plugin on or off; either takes a restart.</summary>
+    public Task SetPluginAsync(string id, string version, bool enabled, CancellationToken ct = default) =>
+        PostAsync($"/Plugins/{id}/{version}/{(enabled ? "Enable" : "Disable")}", ct: ct);
+
+    public Task<ServerSystemInfo> ServerSystemInfoAsync(CancellationToken ct = default) => GetAsync<ServerSystemInfo>("/System/Info", ct: ct);
+
+    public Task RestartServerAsync(CancellationToken ct = default) => PostAsync("/System/Restart", ct: ct);
+
+    /// <summary>
+    /// Whether the server answers <paramref name="path"/> at all: true for a
+    /// reply, false for 404 (a plugin that isn't there), null when it can't tell.
+    /// </summary>
+    public async Task<bool?> ServerHasAsync(string path, CancellationToken ct = default)
+    {
+        if (!IsJellyfin) return null;
+        try { return await SendAsync(AuthorizedRequest(Url(path)), ct, allowNotFound: true).ConfigureAwait(false) is not null; }
+        catch (Exception error) when (error is JellyfinException or HttpRequestException or TimeoutException) { return null; }
+    }
+
     /// <summary>A library's newest music videos, for a shelf.</summary>
     public async Task<IReadOnlyList<BaseItem>> LatestMusicVideosAsync(string libraryId, int limit = 20, CancellationToken ct = default) =>
         await OrNullAsync(async () => (await ItemsAsync(new()
