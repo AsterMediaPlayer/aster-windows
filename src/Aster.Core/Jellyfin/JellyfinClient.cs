@@ -14,7 +14,7 @@ using Query = System.Collections.Generic.Dictionary<string, string?>;
 
 namespace Aster.Core.Jellyfin;
 
-public sealed class JellyfinClient : IMediaServer
+public sealed class JellyfinClient : IMediaServer, Channels.IChannelServer
 {
     /// <summary>
     /// One connection pool for the whole app. Timeouts are per request, since
@@ -1220,6 +1220,12 @@ public sealed class JellyfinClient : IMediaServer
     }
 
     // ---- Playlists ----
+
+    public async Task<(string Name, UserPolicy? Policy)> ChannelViewerAsync(CancellationToken ct = default)
+    {
+        var me = await MeAsync(ct).ConfigureAwait(false);
+        return (me.Name, me.Policy);
+    }
 
     /// <summary>The ratings the server knows, with how each ranks.</summary>
     public Task<List<ParentalRating>> ParentalRatingsAsync(CancellationToken ct = default) =>

@@ -98,4 +98,22 @@ public class ChannelTagsTests
         Assert.Equal(["aster:channel", "Family", "aster:number=7"], ChannelTags.Converted(["asterfin:channel", "Family", "AsterFIN:number=7"]));
         Assert.Null(ChannelTags.Converted(["aster:channel"]));
     }
+    /// <summary>Plex keeps a channel's tags in its playlist's description: a comma before the next "aster:" parts them.</summary>
+    [Fact]
+    public void TagsAreReadFromADescription()
+    {
+        Assert.Equal(["aster:channel", "aster:number=7"], ChannelTags.FromDescription("aster:channel, aster:number=7"));
+        // A comma inside a value stays in it.
+        Assert.Equal(["aster:channel", "aster:user=alice,bob", "aster:channel-name=Laugh, Cry, Repeat", "aster:filler-types=bumpers,promos"],
+            ChannelTags.FromDescription("aster:channel, aster:user=alice,bob, aster:channel-name=Laugh, Cry, Repeat,aster:filler-types=bumpers,promos"));
+        // The description's own words, before them or on lines of their own, are left out.
+        Assert.Equal(["ASTER:Channel", "asterfin:number=3", "aster:group=Kids"],
+            ChannelTags.FromDescription("Cozy shows for Sunday mornings. ASTER:Channel, asterfin:number=3\r\n\nMore words, about it.\naster:group=Kids"));
+        Assert.Empty(ChannelTags.FromDescription("A playlist about disaster: movies"));
+        Assert.Empty(ChannelTags.FromDescription(null));
+
+        var tags = ChannelTags.Parse(ChannelTags.FromDescription("aster:channel, aster:number=7, aster:mode=shuffle"));
+        Assert.True(tags.IsChannel);
+        Assert.Equal(7, tags.Number);
+    }
 }

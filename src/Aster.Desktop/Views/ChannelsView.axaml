@@ -6,7 +6,7 @@
 
     <DockPanel>
         <DockPanel DockPanel.Dock="Top" Margin="48,76,48,16">
-            <Button DockPanel.Dock="Right" Theme="{StaticResource PillButton}" Command="{Binding EditChannelsCommand}" VerticalAlignment="Center">
+            <Button DockPanel.Dock="Right" Theme="{StaticResource PillButton}" Command="{Binding EditChannelsCommand}" IsVisible="{Binding CanEdit}" VerticalAlignment="Center">
                 <StackPanel Orientation="Horizontal" Spacing="10">
                     <TextBlock Text="&#xE713;" FontFamily="{StaticResource IconFont}" VerticalAlignment="Center" />
                     <TextBlock Text="Edit Channels" />

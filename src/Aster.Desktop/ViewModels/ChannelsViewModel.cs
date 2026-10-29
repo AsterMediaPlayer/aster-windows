@@ -24,6 +24,9 @@ public sealed partial class ChannelsViewModel : ViewModelBase, IGuideSource, IRe
 
     /// <summary>Edit Channels: make channels and set them up (an administrator's; others see why not).</summary>
     [CommunityToolkit.Mvvm.Input.RelayCommand] private void EditChannels() => navigator.Push(new EditChannelsViewModel(navigator));
+
+    /// <summary>Edit Channels writes Jellyfin's and Emby's playlist tags; on Plex the description is edited in Plex, for now.</summary>
+    public bool CanEdit => navigator.Jellyfin is not null;
     private readonly ChannelLoader loader = new();
     private IReadOnlyList<PlaylistChannel> channels = [];
     private ChannelGrouping? grouping;
@@ -43,13 +46,16 @@ public sealed partial class ChannelsViewModel : ViewModelBase, IGuideSource, IRe
 
     public Task Loaded { get; private set; }
 
+    /// <summary>Jellyfin, Emby or Plex: the tab is offered only where the server has channels.</summary>
+    private IChannelServer Server => (IChannelServer)navigator.Client;
+
     private async Task LoadAsync()
     {
         try
         {
             // Channels can be kept to some users (aster:user=), by name.
-            var userName = (await navigator.JellyfinOnly.MeAsync()).Name;
-            channels = await loader.LoadAsync(navigator.JellyfinOnly, userName);
+            var userName = (await Server.ChannelViewerAsync()).Name;
+            channels = await loader.LoadAsync(Server, userName);
             // By group once channels have them (aster:group=), as loading put them.
             grouping = ChannelTuner.Grouping;
             error = null;
@@ -83,13 +89,15 @@ public sealed partial class ChannelsViewModel : ViewModelBase, IGuideSource, IRe
 
     public (string Title, string Detail)? Problem =>
         error is { } message ? ("Couldn't load", message)
-        : channels.Count == 0 ? ("No channels", "Make a video playlist into a channel in Edit Channels, or tag it aster:channel in Jellyfin.")
+        : channels.Count == 0 ? ("No channels", navigator.Client.Kind == ServerKind.Plex
+                ? "Put aster:channel in a video playlist's description in Plex."
+                : "Make a video playlist into a channel in Edit Channels, or tag it aster:channel in Jellyfin.")
         : null;
 
     /// <summary>A guide channel per playlist channel, its logo when it shows one (its series' clear logo, or the playlist's picture).</summary>
     public IReadOnlyList<GuideChannel> GuideChannels => channels
         .Select(c => new GuideChannel(c.Id, c.Number.ToString(System.Globalization.CultureInfo.InvariantCulture), c.Name,
-            c.ShowsLogo ? c.LogoUrl(navigator.JellyfinOnly, 200) : null, IsFavorite: false))
+            c.ShowsLogo ? c.LogoUrl(navigator.Client, 200) : null, IsFavorite: false))
         .ToList();
 
     public TimeSpan GuideLength => TimeSpan.FromDays(Days);
@@ -137,7 +145,7 @@ public sealed partial class ChannelsViewModel : ViewModelBase, IGuideSource, IRe
     {
         ScheduledProgram? found;
         lock (scheduled) found = scheduled.GetValueOrDefault(program.Id);
-        return found is null ? null : navigator.JellyfinOnly.LandscapeUrl(found.Item, width: 400);
+        return found is null ? null : navigator.Client.LandscapeUrl(found.Item, width: 400);
     }
 
     /// <summary>What's on now tunes in; anything later opens its page.</summary>

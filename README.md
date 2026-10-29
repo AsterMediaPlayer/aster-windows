@@ -340,6 +340,16 @@ On Emby the tags are the playlist's `TagItems`, which Edit Channels writes
 gives playlists no media type, and asked for one it drops the playlist
 filter.
 
+On Plex, which has no tags on playlists, a channel's tags go in its
+playlist's description instead, as a list where a comma before the next
+`aster:` parts them: `aster:channel, aster:number=7, aster:user=alice,bob`
+(a comma inside a value stays in it, and the description's own words
+before them are left alone; `ChannelTags.FromDescription`). A Plex
+playlist is only its owner's, so its channels are too. For now they're set
+in Plex itself (Edit Channels is Jellyfin's and Emby's), and play the
+playlist's own titles: genres, networks and collections as sources come
+later there.
+
 A channel with anything on it the user's parental controls hold back is
 left out, rather than shown with gaps: a playlist that lists more titles
 than the server sends the user. Genre, network and collection channels

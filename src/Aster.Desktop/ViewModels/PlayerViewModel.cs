@@ -253,7 +253,7 @@ public partial class PlayerViewModel : ViewModelBase
     /// <summary>Opens the row on the channel playing; false when this isn't a channel.</summary>
     public bool OpenFlick()
     {
-        if (stopped || client is not JellyfinClient jellyfin || ChannelFlickViewModel.For(jellyfin, IsLive ? entry.ItemId : null, entry.ChannelId) is not { } flick) return false;
+        if (stopped || ChannelFlickViewModel.For(client, IsLive ? entry.ItemId : null, entry.ChannelId) is not { } flick) return false;
         Flick = flick;
         ControlsVisible = false;
         FlickActivity();
@@ -672,7 +672,7 @@ public partial class PlayerViewModel : ViewModelBase
         var programme = item.Kind is ItemKind.Movie or ItemKind.Episode;
         BugCorner = channel.BugCorner;
         BugWidth = 128 * channel.BugSize / 100.0;
-        BugUrl = channel.ShowsBug && client is JellyfinClient jellyfin ? channel.LogoUrl(jellyfin, (int)(BugWidth * 2)) : null;
+        BugUrl = channel.ShowsBug ? channel.LogoUrl(client, (int)(BugWidth * 2)) : null;
         BugOpacity = programme ? channel.BugOpacity / 100.0 : 0;
         if (programme && channel.BugHideAfter > 0)
         {
@@ -688,7 +688,7 @@ public partial class PlayerViewModel : ViewModelBase
     /// </summary>
     public bool SwitchChannel(int step)
     {
-        if (stopped || client is not JellyfinClient jellyfin || ChannelFlickViewModel.For(jellyfin, IsLive ? entry.ItemId : null, entry.ChannelId) is not { Channels.Count: > 1 } row) return false;
+        if (stopped || ChannelFlickViewModel.For(client, IsLive ? entry.ItemId : null, entry.ChannelId) is not { Channels.Count: > 1 } row) return false;
         row.Move(step);
         if (row.Selected is not { } next) return false;
         Tune(next);

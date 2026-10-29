@@ -65,7 +65,7 @@ public static class PlexDevice
     }
 }
 
-public sealed partial class PlexClient : IMediaServer
+public sealed partial class PlexClient : IMediaServer, Channels.IChannelServer
 {
     /// <remarks>Redirects are followed by <see cref="Net.CredentialSafeRedirects"/>, so the token never goes to another host.</remarks>
     private static readonly HttpClient SharedHttp = Http30();
@@ -99,6 +99,10 @@ public sealed partial class PlexClient : IMediaServer
     public string AccessToken { get; }
     public string? UserId { get; }
     public string ServerName { get; }
+
+    /// <summary>The Plex Home user (or account) signed in, by name: for channels kept to some users.</summary>
+    public string UserName { get; init; } = "";
+
     public ServerKind Kind => ServerKind.Plex;
 
     /// <summary>Browsing, playing, resume and watched; the rest comes later.</summary>
@@ -251,6 +255,40 @@ public sealed partial class PlexClient : IMediaServer
         };
         return descending == true ? field + ":desc" : field;
     }
+
+    // ---- Playlists, for Channels ----
+
+    /// <summary>
+    /// The user's playlists of one media type ("Video"): Plex keeps a
+    /// playlist to the account that made it. It has no tags on playlists, so
+    /// a channel's are kept in its description (see <see cref="Channels.ChannelTags.FromDescription"/>).
+    /// </summary>
+    public async Task<IReadOnlyList<BaseItem>> PlaylistsAsync(string mediaType, CancellationToken ct = default)
+    {
+        var found = await ContainerAsync("/playlists", new Dictionary<string, string?> { ["playlistType"] = mediaType.ToLowerInvariant() }, ct: ct).ConfigureAwait(false);
+        return (found.Metadata ?? [])
+            .Where(p => string.Equals(p.PlaylistType, mediaType, StringComparison.OrdinalIgnoreCase))
+            .Select(p => new BaseItem
+            {
+                Id = p.RatingKey,
+                Type = "Playlist",
+                Name = p.Title,
+                Overview = p.Summary,
+                ChildCount = p.LeafCount,
+                MediaType = mediaType,
+                Tags = Channels.ChannelTags.FromDescription(p.Summary),
+                ImageTags = (p.Composite ?? p.Thumb) is { } picture ? new Dictionary<string, string> { ["Primary"] = picture } : null,
+            })
+            .OrderBy(p => p.Name, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    public Task<IReadOnlyList<BaseItem>> PlaylistItemsAsync(string playlistId, CancellationToken ct = default) =>
+        TitlesAsync($"/playlists/{playlistId}/items", ct: ct);
+
+    /// <summary>The user by name; Plex's restrictions aren't read, so nothing is held back by Channels itself.</summary>
+    public Task<(string Name, UserPolicy? Policy)> ChannelViewerAsync(CancellationToken ct = default) =>
+        Task.FromResult<(string, UserPolicy?)>((UserName, null));
 
     // ---- Browsing ----
 

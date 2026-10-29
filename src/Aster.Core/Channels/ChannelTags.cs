@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text.RegularExpressions;
 
 namespace Aster.Core.Channels;
 
@@ -78,7 +79,7 @@ public static class ChannelTagNames
 /// app writes every setting out, defaults too (all but the name), so whoever
 /// opens the playlist in Jellyfin sees each one there to change.
 /// </summary>
-public sealed record ChannelTags
+public sealed partial record ChannelTags
 {
     public const string Prefix = "aster:";
 
@@ -356,6 +357,36 @@ public sealed record ChannelTags
 
     /// <summary>Whether <paramref name="tags"/> set <paramref name="key"/> at all, as opposed to leaving it to its default.</summary>
     public static bool Sets(string key, IEnumerable<string>? tags) => (tags ?? []).Any(tag => Split(tag)?.Key == key);
+
+    /// <summary>
+    /// The tags kept in a description, where a server has no tags on
+    /// playlists (Plex): "aster:channel, aster:number=7" as two tags. Only a
+    /// comma before the next "aster:" parts them, so a comma inside a value
+    /// ("aster:user=alice,bob", a name) stays in it. Text before a line's
+    /// first one is the description's own, and left out.
+    /// </summary>
+    public static IReadOnlyList<string> FromDescription(string? text)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return [];
+        var tags = new List<string>();
+        foreach (var line in text.Split('\n'))
+        {
+            if (EntryStart().Match(line) is not { Success: true } start) continue;
+            foreach (var entry in EntryBreak().Split(line[start.Index..]))
+            {
+                if (entry.Trim() is { Length: > 0 } tag) tags.Add(tag);
+            }
+        }
+        return tags;
+    }
+
+    /// <summary>"aster:" (or "asterfin:") starting a line, or after a space or comma.</summary>
+    [GeneratedRegex(@"(?<![^\s,])aster(?:fin)?:", RegexOptions.IgnoreCase)]
+    private static partial Regex EntryStart();
+
+    /// <summary>A comma before the next "aster:".</summary>
+    [GeneratedRegex(@",\s*(?=aster(?:fin)?:)", RegexOptions.IgnoreCase)]
+    private static partial Regex EntryBreak();
 
     /// <summary><paramref name="tags"/> with every "asterfin:" tag renamed "aster:"; null when there's none to rename.</summary>
     public static IReadOnlyList<string>? Converted(IEnumerable<string>? tags)

@@ -1,5 +1,6 @@
 using Aster.Core.Jellyfin;
 using Aster.Core.Playback;
+using Aster.Core.Server;
 
 namespace Aster.Core.Channels;
 
@@ -40,7 +41,7 @@ public sealed record PlaylistChannel
     public string Name => CustomName ?? Playlist.DisplayTitle;
 
     /// <summary>The picture the channel's logo and bug show: its one series' clear logo, else the playlist's picture.</summary>
-    public Uri? LogoUrl(JellyfinClient client, int width)
+    public Uri? LogoUrl(IMediaServer client, int width)
     {
         if (SeriesLogo is var (itemId, tag)) return client.ImageUrl(itemId, ImageKind.Logo, tag, maxWidth: width);
         return Playlist.ImageTags?.GetValueOrDefault("Primary") is { } primary ? client.ImageUrl(Playlist.Id, ImageKind.Primary, primary, maxWidth: width) : null;
@@ -169,10 +170,10 @@ public sealed class ChannelLoader
     /// to play is left out, and so is one with anything on it the user's
     /// parental controls hold back (see <see cref="IsHeldBack"/>).
     /// </summary>
-    public async Task<IReadOnlyList<PlaylistChannel>> LoadAsync(JellyfinClient client, string? userName = null, bool force = false)
+    public async Task<IReadOnlyList<PlaylistChannel>> LoadAsync(IChannelServer client, string? userName = null, bool force = false)
     {
         // Read each time, so an administrator's change counts on the next visit.
-        var policy = (await client.MeAsync().ConfigureAwait(false)).Policy;
+        var policy = (await client.ChannelViewerAsync().ConfigureAwait(false)).Policy;
         var playlists = await client.PlaylistsAsync("Video").ConfigureAwait(false);
         var tagged = TaggedChannels(playlists).Where(t => userName is null || t.Tags.IsShownTo(userName)).ToList();
         var numbers = ChannelTags.Numbers(tagged.Select(t => (t.Playlist.Id, t.Tags.Name ?? t.Playlist.DisplayTitle, t.Tags.Number)));
@@ -193,11 +194,15 @@ public sealed class ChannelLoader
         {
             if (items is not null) itemCache[playlist.Id] = (playlist.ChildCount, items);
         }
-        await LoadSourcesAsync(tagged, client, force).ConfigureAwait(false);
-        // The ratings' ranks, only needed to clear a restricted user's genre, network or collection channel.
+        // Genres, networks and collections as sources are Jellyfin's and Emby's for now.
         IReadOnlyList<ParentalRating> ratings = [];
-        if (policy is { RestrictsContent: true } && tagged.Any(t => t.Tags.HasSources && t.Tags.Ratings.Count > 0))
-            ratings = await client.ParentalRatingsAsync().ConfigureAwait(false);
+        if (client is JellyfinClient jellyfin)
+        {
+            await LoadSourcesAsync(tagged, jellyfin, force).ConfigureAwait(false);
+            // The ratings' ranks, only needed to clear a restricted user's genre, network or collection channel.
+            if (policy is { RestrictsContent: true } && tagged.Any(t => t.Tags.HasSources && t.Tags.Ratings.Count > 0))
+                ratings = await jellyfin.ParentalRatingsAsync().ConfigureAwait(false);
+        }
 
         var built = new List<PlaylistChannel>();
         foreach (var (playlist, tags) in tagged)

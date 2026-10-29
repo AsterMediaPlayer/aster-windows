@@ -198,6 +198,16 @@ public sealed record PlexMetadata
     public int? Index { get; init; }
     public int? ParentIndex { get; init; }
     public string? Thumb { get; init; }
+
+    /// <summary>A playlist's picture, made from its titles' posters.</summary>
+    public string? Composite { get; init; }
+
+    /// <summary>A playlist's kind: video, audio or photo.</summary>
+    public string? PlaylistType { get; init; }
+
+    /// <summary>A smart playlist, filled by a filter rather than by hand.</summary>
+    public bool? Smart { get; init; }
+
     public string? Art { get; init; }
     public string? ParentThumb { get; init; }
     public string? GrandparentThumb { get; init; }

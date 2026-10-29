@@ -74,10 +74,10 @@ public sealed record FlickCard(FlickChannel? Channel, bool IsSelected, bool IsCu
 /// </summary>
 public sealed partial class ChannelFlickViewModel : ObservableObject
 {
-    private readonly JellyfinClient client;
+    private readonly IMediaServer client;
     private readonly bool isLive;
 
-    private ChannelFlickViewModel(JellyfinClient client, string currentId, bool isLive)
+    private ChannelFlickViewModel(IMediaServer client, string currentId, bool isLive)
     {
         this.client = client;
         CurrentId = currentId;
@@ -87,7 +87,7 @@ public sealed partial class ChannelFlickViewModel : ObservableObject
     }
 
     /// <summary>The row for a Live TV channel or a Channels-tab one; null for anything else.</summary>
-    public static ChannelFlickViewModel? For(JellyfinClient client, string? liveChannel, string? channel) =>
+    public static ChannelFlickViewModel? For(IMediaServer client, string? liveChannel, string? channel) =>
         liveChannel is not null ? new(client, liveChannel, isLive: true)
         : channel is not null ? new(client, channel, isLive: false)
         : null;
@@ -198,7 +198,8 @@ public sealed partial class ChannelFlickViewModel : ObservableObject
             try
             {
                 var groups = LiveChannelDirectory.Groups;
-                var arranged = LiveGuide.Arranged(await client.ChannelsAsync(), groups);
+                // Live TV is Jellyfin's and Emby's.
+                var arranged = LiveGuide.Arranged(await ((JellyfinClient)client).ChannelsAsync(), groups);
                 LiveChannelDirectory.Register(arranged.Channels, arranged.Listed, groups);
                 Channels = LiveChannels(arranged.Channels);
             }
@@ -224,7 +225,7 @@ public sealed partial class ChannelFlickViewModel : ObservableObject
                 current.End,
                 current.ImageTags?.GetValueOrDefault("Primary") is { } tag ? client.ImageUrl(current.Id, ImageKind.Primary, tag, maxWidth: 480) : null)
             : null;
-        return new FlickChannel(channel.Id, channel.ChannelNumber, channel.DisplayTitle, client.ChannelLogoUrl(channel, width: 300), null, program,
+        return new FlickChannel(channel.Id, channel.ChannelNumber, channel.DisplayTitle, ((JellyfinClient)client).ChannelLogoUrl(channel, width: 300), null, program,
             LiveChannelDirectory.Grouping?.GroupOf(channel.Id));
     }).ToList();
 
