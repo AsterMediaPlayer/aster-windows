@@ -459,7 +459,7 @@ turned on), fetched whole on first use and read by `Playback/BifIndex`.
 Emby lists a song's lyrics (an `.lrc` beside it, or the file's own tag)
 as a subtitle stream instead of a lyrics route, so they're fetched as text
 and read as LRC (`SongLyrics.FromLrc`). Both are ported from the Apple
-app, but not yet tried against a live Emby server.
+app; the previews are tried on Emby 4.11, the lyrics not yet.
 
 An anime episode's opening and ending get the Apple app's song card in the
 lower left, for their first 16 seconds and, when they're long enough, their
