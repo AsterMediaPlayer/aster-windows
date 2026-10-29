@@ -1,0 +1,125 @@
+name: Bug report
+description: Something in Aster for Windows and Linux doesn't work or looks wrong
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time. Questions and setup help go to the [support page](https://astermediaplayer.com/support.html). A problem with a server plugin (Aster Disc, OP/ED, Channels, Aurora) goes to the [plugins repository](https://github.com/AsterMediaPlayer/aster-companion-plugins/issues/new/choose). Please search the open issues first, in case it's already reported.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened, and what did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: "1. Open ...  2. Select ...  3. ..."
+    validations:
+      required: true
+  - type: dropdown
+    id: often
+    attributes:
+      label: How often does it happen?
+      options:
+        - "Every time"
+        - "Sometimes"
+        - "Only once so far"
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Which part of the app?
+      options:
+        - "Video playback"
+        - "Subtitles or audio tracks"
+        - "Home, browsing or search"
+        - "Title pages"
+        - "Music or audiobooks"
+        - "Live TV"
+        - "Channels (beta)"
+        - "Disc menus"
+        - "Anime openings and endings"
+        - "Sign-in, servers or accounts"
+        - "Settings"
+        - "Something else"
+    validations:
+      required: true
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      multiple: true
+      options:
+        - "Windows (installer)"
+        - "Windows (zip)"
+        - "Linux"
+    validations:
+      required: true
+  - type: input
+    id: device
+    attributes:
+      label: Device
+      placeholder: "Desktop with an RTX 3060, ThinkPad T14"
+  - type: input
+    id: os
+    attributes:
+      label: "OS version (and Linux distribution)"
+      placeholder: "Windows 11 24H2, Ubuntu 24.04 with libmpv2"
+    validations:
+      required: true
+  - type: input
+    id: app-version
+    attributes:
+      label: Aster version
+      description: In Settings ▸ About, or the file name you downloaded.
+      placeholder: "0.10.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: server
+    attributes:
+      label: Server
+      options:
+        - "Jellyfin"
+        - "Emby"
+        - "Plex"
+    validations:
+      required: true
+  - type: input
+    id: server-version
+    attributes:
+      label: Server version
+      placeholder: "Jellyfin 12.1.0"
+    validations:
+      required: true
+  - type: checkboxes
+    id: plugins
+    attributes:
+      label: Aster plugins on the server (Jellyfin only)
+      options:
+        - label: Aster Disc
+        - label: Aster OP/ED
+        - label: Aster Channels
+        - label: Aster Aurora
+
+  - type: textarea
+    id: media
+    attributes:
+      label: The file, for playback or subtitle problems
+      description: Container, video and audio codecs, and subtitle format, e.g. from the server's media info. Not the file itself.
+      placeholder: "MKV, HEVC 10-bit HDR10, TrueHD Atmos 7.1, PGS subtitles"
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or error messages
+      description: Anything the app showed, and the server's log lines from that moment. Remove server addresses, tokens and names you don't want public.
+      render: text
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshots or a screen recording
+      description: Drag files here. Check they don't show anything private.

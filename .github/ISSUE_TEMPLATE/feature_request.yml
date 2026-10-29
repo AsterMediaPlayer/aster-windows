@@ -1,0 +1,34 @@
+name: Feature request or idea
+description: Suggest something for Aster for Windows and Linux
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please search the open issues first: if someone has asked already, a 👍 on theirs helps more than a new one.
+  - type: textarea
+    id: what
+    attributes:
+      label: What would you like, and why?
+      description: The problem it solves for you is the most useful part.
+    validations:
+      required: true
+  - type: textarea
+    id: how
+    attributes:
+      label: Any ideas on how it could work?
+      description: Other apps that do it well are welcome as examples.
+  - type: checkboxes
+    id: platform
+    attributes:
+      label: Which platforms is it for?
+      options:
+        - label: "Windows (installer)"
+        - label: "Windows (zip)"
+        - label: "Linux"
+  - type: checkboxes
+    id: help
+    attributes:
+      label: Would you like to build it?
+      options:
+        - label: Yes, I'd like to work on this (please say so here before starting)
