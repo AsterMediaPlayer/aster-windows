@@ -526,7 +526,9 @@ be dragged (a book's is its chapter's,
 as the app's own bar is). Play, pause, next, previous and stop do
 what the keyboard's keys do (next and previous are a book's chapters);
 fast-forward and rewind skip a book 30 seconds ahead and 15 back. A video
-isn't shown there; the player has its own keys.
+isn't shown there; the player has its own keys. Windows names the player
+"Aster" from the installer's Start menu shortcut, which carries Aster's
+app id (`AsterMediaPlayer.Aster`); run from the zip, it's "Unknown app".
 
 **Add to Playlist** (`PlaylistPickerViewModel`): from a card's right-click
 menu (a movie, show, season or episode; a show adds all its episodes, a

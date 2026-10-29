@@ -59,8 +59,9 @@ Source: "{#SourceDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs 
 Type: filesandordirs; Name: "{app}\*"
 
 [Icons]
-Name: "{autoprograms}\Aster"; Filename: "{app}\Aster.Desktop.exe"
-Name: "{autodesktop}\Aster"; Filename: "{app}\Aster.Desktop.exe"; Tasks: desktopicon
+; The app id Aster gives itself (WindowsAppIdentity), so Windows' media overlay names it.
+Name: "{autoprograms}\Aster"; Filename: "{app}\Aster.Desktop.exe"; AppUserModelID: "AsterMediaPlayer.Aster"
+Name: "{autodesktop}\Aster"; Filename: "{app}\Aster.Desktop.exe"; Tasks: desktopicon; AppUserModelID: "AsterMediaPlayer.Aster"
 
 [Run]
 Filename: "{app}\Aster.Desktop.exe"; Description: "{cm:LaunchProgram,Aster}"; Flags: nowait postinstall skipifsilent

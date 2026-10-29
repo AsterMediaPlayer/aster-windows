@@ -17,6 +17,10 @@ sealed class Program
             System.Diagnostics.Trace.Listeners.Add(new System.Diagnostics.ConsoleTraceListener());
             System.Diagnostics.Trace.AutoFlush = true;
         }
+#if WINDOWS
+        // Before any window, which takes the process's app id.
+        WindowsAppIdentity.Apply();
+#endif
         BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
     }
 

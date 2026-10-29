@@ -18,6 +18,8 @@ internal sealed class WindowsMediaControls : ISystemMediaControls
 {
     private readonly SystemMediaTransportControls controls;
     private string? shownId;
+    /// <summary>The title, artist and album shown: a book's album is its chapter, which changes as it plays.</summary>
+    private (string, string?, string?)? shownText;
 
     public WindowsMediaControls(IntPtr window)
     {
@@ -38,6 +40,7 @@ internal sealed class WindowsMediaControls : ISystemMediaControls
         if (info is null)
         {
             shownId = null;
+            shownText = null;
             controls.PlaybackStatus = MediaPlaybackStatus.Closed;
             controls.DisplayUpdater.ClearAll();
             controls.IsEnabled = false;
@@ -53,9 +56,10 @@ internal sealed class WindowsMediaControls : ISystemMediaControls
         controls.PlaybackRate = info.Rate;
 
         // The title and picture only as they change; the timeline each time.
-        if (shownId != info.Id || artwork is not null)
+        if (shownId != info.Id || shownText != (info.Title, info.Artist, info.Album) || artwork is not null)
         {
             shownId = info.Id;
+            shownText = (info.Title, info.Artist, info.Album);
             var display = controls.DisplayUpdater;
             display.ClearAll();
             display.Type = MediaPlaybackType.Music;
