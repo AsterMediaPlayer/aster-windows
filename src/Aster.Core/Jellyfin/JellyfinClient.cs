@@ -1276,10 +1276,35 @@ public sealed class JellyfinClient : IMediaServer
         (await GetAsync<ItemsResult>($"/Items/{itemId}/ThemeVideos", new() { ["userId"] = RequireUser(), ["inheritFromParent"] = "true" }, ct).ConfigureAwait(false)).Items;
 
     /// <summary>A song's lyrics, or null when the server has none.</summary>
-    public async Task<SongLyrics?> LyricsAsync(string itemId, CancellationToken ct = default) =>
-        await SendAsync(AuthorizedRequest(Url($"/Audio/{itemId}/Lyrics")), ct, allowNotFound: true).ConfigureAwait(false) is { } data
+    public async Task<SongLyrics?> LyricsAsync(string itemId, CancellationToken ct = default)
+    {
+        if (Kind == ServerKind.Emby) return await EmbyLyricsAsync(itemId, ct).ConfigureAwait(false);
+        return await SendAsync(AuthorizedRequest(Url($"/Audio/{itemId}/Lyrics")), ct, allowNotFound: true).ConfigureAwait(false) is { } data
             ? Decode<SongLyrics>(data)
             : null;
+    }
+
+    /// <summary>
+    /// Emby has no lyrics route: it lists a song's lyrics (an .lrc beside it,
+    /// or the file's own tag) as a subtitle stream, fetched as text.
+    /// </summary>
+    private async Task<SongLyrics?> EmbyLyricsAsync(string itemId, CancellationToken ct)
+    {
+        var song = await ItemAsync(itemId, ct).ConfigureAwait(false);
+        var candidates = (song.MediaSources ?? []).SelectMany(source =>
+            (source.MediaStreams ?? song.MediaStreams ?? []).Where(s => s.Type == "Subtitle").Select(stream => (SourceId: source.Id, Stream: stream))).ToList();
+        // A timed .lrc first.
+        var chosen = candidates.FirstOrDefault(c => string.Equals(c.Stream.Codec, "lrc", StringComparison.OrdinalIgnoreCase));
+        if (chosen.Stream is null) chosen = candidates.FirstOrDefault();
+        if (chosen.Stream is not { Index: { } index } stream) return null;
+        var format = stream.Codec?.ToLowerInvariant() ?? "lrc";
+        var data = await SendAsync(AuthorizedRequest(Url($"/Items/{itemId}/{chosen.SourceId}/Subtitles/{index}/Stream.{format}")), ct, allowNotFound: true).ConfigureAwait(false);
+        return data is null ? null : SongLyrics.FromLrc(Encoding.UTF8.GetString(data));
+    }
+
+    /// <summary>A title's BIF file of preview frames on Emby (see <see cref="Playback.BifIndex"/>), nearest <paramref name="width"/> across.</summary>
+    public Uri ThumbnailsUrl(string itemId, string? mediaSourceId, int width) =>
+        Url($"/Videos/{itemId}/index.bif", new() { ["Width"] = width.ToString(CultureInfo.InvariantCulture), ["MediaSourceId"] = mediaSourceId });
 
     // ---- Media segments ----
 

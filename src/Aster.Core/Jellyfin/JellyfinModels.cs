@@ -832,6 +832,69 @@ public sealed record SongLyrics
 {
     public LyricMetadata? Metadata { get; init; }
     public IReadOnlyList<LyricLine> Lyrics { get; init; } = [];
+
+    /// <summary>
+    /// Lyrics from LRC text (Emby's): <c>[mm:ss.xx]</c> stamps before each
+    /// line, several when a line repeats, and <c>[offset:±ms]</c>; tags such
+    /// as <c>[ar:]</c> are skipped. Text without stamps is unsynced, a line
+    /// each. Null when there are no words.
+    /// </summary>
+    public static SongLyrics? FromLrc(string text)
+    {
+        var timed = new List<LyricLine>();
+        var plain = new List<string>();
+        long offsetTicks = 0;
+        foreach (var raw in text.Split('\n'))
+        {
+            var line = raw.Trim();
+            var stamps = new List<long>();
+            var tagged = false;
+            while (line.StartsWith('[') && line.IndexOf(']') is var close and > 0)
+            {
+                var tag = line[1..close];
+                line = line[(close + 1)..];
+                if (LrcTicks(tag) is { } ticks) stamps.Add(ticks);
+                else
+                {
+                    tagged = true;
+                    var parts = tag.Split(':', 2);
+                    if (parts.Length == 2 && parts[0].Equals("offset", StringComparison.OrdinalIgnoreCase)
+                        && long.TryParse(parts[1].Trim(), NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out var ms))
+                        offsetTicks = ms * 10_000;
+                }
+            }
+            var words = line.Trim();
+            if (stamps.Count > 0) timed.AddRange(stamps.Select(start => new LyricLine { Text = words, Start = start }));
+            else if (!tagged) plain.Add(words);
+        }
+        if (timed.Count > 0)
+        {
+            // A positive offset shows the lines sooner.
+            return new SongLyrics
+            {
+                Metadata = new LyricMetadata { IsSynced = true },
+                Lyrics = timed.OrderBy(l => l.Start).Select(l => l with { Start = Math.Max(l.Start!.Value - offsetTicks, 0) }).ToList(),
+            };
+        }
+        var first = plain.FindIndex(l => l.Length > 0);
+        if (first < 0) return null;
+        var last = plain.FindLastIndex(l => l.Length > 0);
+        return new SongLyrics
+        {
+            Metadata = new LyricMetadata { IsSynced = false },
+            Lyrics = plain[first..(last + 1)].Select(l => new LyricLine { Text = l }).ToList(),
+        };
+    }
+
+    /// <summary><c>mm:ss</c>, <c>mm:ss.xx</c> or <c>mm:ss.xxx</c> in ticks; null for other tags.</summary>
+    private static long? LrcTicks(string stamp)
+    {
+        var parts = stamp.Split(':');
+        if (parts.Length != 2 || !long.TryParse(parts[0], NumberStyles.None, CultureInfo.InvariantCulture, out var minutes)
+            || parts[1].Length == 0 || !parts[1].All(c => char.IsAsciiDigit(c) || c == '.')
+            || !double.TryParse(parts[1], NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture, out var seconds)) return null;
+        return minutes * 600_000_000 + (long)Math.Round(seconds * 10_000_000);
+    }
 }
 
 public sealed record LyricMetadata
