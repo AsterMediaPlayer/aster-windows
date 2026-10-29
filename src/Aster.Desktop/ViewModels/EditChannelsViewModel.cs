@@ -106,9 +106,7 @@ public sealed partial class EditChannelsViewModel : ViewModelBase, IRefreshable
 
     /// <summary>
     /// A Plex server: its playlists are the user's own, so anyone can make
-    /// channels of them; the tags go in a playlist's description, and a
-    /// channel is made from a show or a playlist (genres, networks and
-    /// collections as sources are Jellyfin's and Emby's for now).
+    /// channels of them, and the tags go in a playlist's description.
     /// </summary>
     private PlexClient? Plex => navigator.Client as PlexClient;
     private bool CanEdit => isAdministrator == true && !refused;
@@ -197,6 +195,7 @@ public sealed partial class EditChannelsViewModel : ViewModelBase, IRefreshable
     private async Task LoadPlexAsync(PlexClient plex)
     {
         var shows = plex.ShowsAsync();
+        var names = plex.ChannelSourceNamesAsync();
         try
         {
             playlists = (await plex.PlaylistsAsync("Video")).ToList();
@@ -208,6 +207,14 @@ public sealed partial class EditChannelsViewModel : ViewModelBase, IRefreshable
         }
         isAdministrator = true;
         seriesOptions = ((await OrNull(shows)) ?? []).Select(s => (s.Id, s.DisplayTitle)).ToList();
+        if (await OrNull(names) is { } found)
+        {
+            genreNames = [.. found.Genres];
+            networkNames = [.. found.Networks];
+            collectionNames = [.. found.Collections];
+            libraryNames = [.. found.Libraries];
+            ratingNames = [.. found.Ratings];
+        }
         loaded = true;
         OnPropertyChanged(nameof(Title));
         Rebuild();
@@ -218,15 +225,23 @@ public sealed partial class EditChannelsViewModel : ViewModelBase, IRefreshable
     private readonly TaskCompletionSource loadedOnce = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
     /// <summary>
-    /// New Channel ▸ From a Show, as if <paramref name="showName"/> were
-    /// picked once the page has loaded: the debug flag --new-channel.
+    /// New Channel, as if <paramref name="choice"/> were picked once the page
+    /// has loaded: a show by name, or "genre:Comedy", "network:BBC One" or
+    /// "collection:Star Wars". The debug flag --new-channel.
     /// </summary>
-    public async Task MakeChannelAsync(string showName)
+    public async Task MakeChannelAsync(string choice)
     {
         await loadedOnce.Task;
-        if (seriesOptions.FirstOrDefault(o => string.Equals(o.Name, showName, StringComparison.OrdinalIgnoreCase)) is { Id: not null } show)
-            await CreateAsync(NewChannelSource.Show, show.Id, show.Name);
-        else Message = $"No show called {showName}";
+        var (source, name) = choice.Split(':', 2) switch
+        {
+            ["genre", var n] => (NewChannelSource.Genre, n),
+            ["network", var n] => (NewChannelSource.Network, n),
+            ["collection", var n] => (NewChannelSource.Collection, n),
+            _ => (NewChannelSource.Show, choice),
+        };
+        if (Options(source).FirstOrDefault(o => string.Equals(o.Name, name, StringComparison.OrdinalIgnoreCase)) is { Id: not null } picked)
+            await CreateAsync(source, picked.Id, picked.Name);
+        else Message = $"No {SourceTitle(source)} called {name}";
     }
 
     private static async Task<T?> OrNull<T>(Task<T> task) where T : class
@@ -324,8 +339,8 @@ public sealed partial class EditChannelsViewModel : ViewModelBase, IRefreshable
             string playlistId;
             if (Plex is { } plex)
             {
-                // The show's id brings all its episodes, in order.
-                playlistId = await plex.CreatePlaylistAsync(name, [id]);
+                // The show's id brings all its episodes, in order; a genre's, network's or collection's starts empty.
+                playlistId = await plex.CreatePlaylistAsync(name, source == NewChannelSource.Show ? [id] : []);
                 await plex.SetChannelTagsAsync(playlistId, null, tags.AppliedTo([]));
             }
             else
@@ -394,13 +409,12 @@ public sealed partial class EditChannelsViewModel : ViewModelBase, IRefreshable
             rows.Add(new EditSectionRow("NEW CHANNEL"));
             foreach (var source in Enum.GetValues<NewChannelSource>())
             {
-                if (Plex is not null && source is NewChannelSource.Genre or NewChannelSource.Network or NewChannelSource.Collection) continue;
                 var options = Options(source);
                 rows.Add(new EditChoiceRow(SourceTitle(source), isCreating ? "Making it…" : options.Count == 0 ? "None" : "",
                     options.Select((o, i) => new TrackChoice(i, o.Name, false, new RelayCommand(() => _ = CreateAsync(source, o.Id, o.Name), () => !isCreating))).ToList()));
             }
             rows.Add(new EditNoteRow(Plex is not null
-                ? "A show plays its episodes in order; a playlist plays what you put in it. On Plex a playlist, and so its channel, is only yours."
+                ? "A show plays its episodes in order; a genre, network or collection plays every movie and show in it (a network is a show's network, or a movie's studio). A playlist plays what you put in it. On Plex a playlist, and so its channel, is only yours."
                 : "A show plays its episodes in order; a genre, network or collection plays every movie and show in it. A playlist plays what you put in it. Each is shared with everyone on your server."));
         }
         if (playlists.Count == 0) rows.Add(new EditNoteRow(Plex is not null ? "No video playlists yet. Make one in Plex." : "No video playlists yet. Make one in Jellyfin, or with Add to Playlist on any movie."));

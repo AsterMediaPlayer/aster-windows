@@ -194,11 +194,10 @@ public sealed class ChannelLoader
         {
             if (items is not null) itemCache[playlist.Id] = (playlist.ChildCount, items);
         }
-        // Genres, networks and collections as sources are Jellyfin's and Emby's for now.
         IReadOnlyList<ParentalRating> ratings = [];
+        await LoadSourcesAsync(tagged, client, force).ConfigureAwait(false);
         if (client is JellyfinClient jellyfin)
         {
-            await LoadSourcesAsync(tagged, jellyfin, force).ConfigureAwait(false);
             // The ratings' ranks, only needed to clear a restricted user's genre, network or collection channel.
             if (policy is { RestrictsContent: true } && tagged.Any(t => t.Tags.HasSources && t.Tags.Ratings.Count > 0))
                 ratings = await jellyfin.ParentalRatingsAsync().ConfigureAwait(false);
@@ -237,11 +236,37 @@ public sealed class ChannelLoader
     /// libraries; a series brings all its episodes. A channel whose titles
     /// haven't changed keeps what it had.
     /// </summary>
-    private async Task LoadSourcesAsync(List<(BaseItem Playlist, ChannelTags Tags)> tagged, JellyfinClient client, bool force)
+    private async Task LoadSourcesAsync(List<(BaseItem Playlist, ChannelTags Tags)> tagged, IChannelServer server, bool force)
     {
         var sourceChannels = tagged.Where(t => t.Tags.HasSources).ToList();
         if (sourceChannels.Count == 0) return;
         if (force) episodeCache = [];
+        IReadOnlyList<(string Id, IReadOnlyList<BaseItem>? Found)> titles;
+        Func<string, Task<IReadOnlyList<BaseItem>>> episodesOf;
+        switch (server)
+        {
+            case JellyfinClient jellyfin:
+                titles = await JellyfinTitlesAsync(sourceChannels, jellyfin).ConfigureAwait(false);
+                episodesOf = async id => await jellyfin.SeriesEpisodesAsync(id).ConfigureAwait(false);
+                break;
+            case IChannelSources sources:
+                // Plex finds its own, by name.
+                titles = await Task.WhenAll(sourceChannels.Select(async entry =>
+                {
+                    try { return (entry.Playlist.Id, (IReadOnlyList<BaseItem>?)await sources.ChannelSourceTitlesAsync(entry.Tags).ConfigureAwait(false)); }
+                    catch (Exception error) when (IsServerError(error)) { return (entry.Playlist.Id, (IReadOnlyList<BaseItem>?)null); }
+                })).ConfigureAwait(false);
+                episodesOf = id => sources.ChannelSeriesEpisodesAsync(id);
+                break;
+            default:
+                return;
+        }
+        await ExpandAsync(sourceChannels, titles, episodesOf).ConfigureAwait(false);
+    }
+
+    /// <summary>Each channel's movies and series on Jellyfin or Emby, by its genres', networks' and collections' ids; null where the server failed.</summary>
+    private static async Task<IReadOnlyList<(string Id, IReadOnlyList<BaseItem>? Found)>> JellyfinTitlesAsync(List<(BaseItem Playlist, ChannelTags Tags)> sourceChannels, JellyfinClient client)
+    {
         var genreList = sourceChannels.Any(c => c.Tags.Genres.Count > 0) ? OrEmpty(client.VideoGenresAsync()) : Task.FromResult<IReadOnlyList<BaseItem>>([]);
         var studioList = sourceChannels.Any(c => c.Tags.Networks.Count > 0) ? OrEmpty(client.VideoStudiosAsync()) : Task.FromResult<IReadOnlyList<BaseItem>>([]);
         var collectionList = sourceChannels.Any(c => c.Tags.Collections.Count > 0) ? OrEmpty(client.CollectionsAsync()) : Task.FromResult<IReadOnlyList<BaseItem>>([]);
@@ -283,6 +308,17 @@ public sealed class ChannelLoader
             }
             return (entry.Playlist.Id, Found: (IReadOnlyList<BaseItem>?)found);
         })).ConfigureAwait(false);
+        return titles;
+    }
+
+    /// <summary>
+    /// Each channel's titles with its series opened into their episodes
+    /// (those not already known fetched a few at a time); a channel whose
+    /// titles haven't changed keeps what it had.
+    /// </summary>
+    private async Task ExpandAsync(List<(BaseItem Playlist, ChannelTags Tags)> sourceChannels, IReadOnlyList<(string Id, IReadOnlyList<BaseItem>? Found)> titles,
+        Func<string, Task<IReadOnlyList<BaseItem>>> episodesOf)
+    {
         var titleMap = titles.Where(t => t.Found is not null).ToDictionary(t => t.Id, t => t.Found!);
 
         // Then the episodes of each series not already known, a few at a time.
@@ -296,7 +332,7 @@ public sealed class ChannelLoader
                 await gate.WaitAsync().ConfigureAwait(false);
                 try
                 {
-                    var episodes = await client.SeriesEpisodesAsync(id).ConfigureAwait(false);
+                    var episodes = await episodesOf(id).ConfigureAwait(false);
                     lock (fetched) fetched[id] = episodes;
                 }
                 catch (Exception error) when (IsServerError(error)) { }

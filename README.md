@@ -129,8 +129,9 @@ These leave the saved session alone:
 - `--mini <channelId>` (with `--tab livetv`) tunes that channel straight
   into the Live TV header's mini player.
 - `--edit-channels [playlistId]` opens Edit Channels, or one channel's
-  settings alone; with `--new-channel "<show>"`, New Channel ▸ From a Show
-  makes a channel of that show, as if it were picked.
+  settings alone; with `--new-channel "<show>"` (or `"genre:Comedy"`,
+  `"network:BBC One"`, `"collection:Star Wars"`), New Channel makes that
+  channel, as if it were picked.
 - `ASTER_GAMEPAD_SCRIPT="10:down,12:a,14:b"` attaches a pretend game
   controller and presses its buttons that many seconds after starting (a,
   b, x, y, start, lb, rb, up, down, left, right; `hold-down` holds one a
@@ -350,9 +351,12 @@ playlist is only its owner's, so its channels are too, and anyone can make
 them. Edit Channels works there: From a Show makes a playlist of the show
 (Plex adds its episodes from the show's id, in order), From One of Your
 Playlists turns one on, and each change rewrites the tags at the end of the
-description, keeping its own words (`ChannelTags.InDescription`). Plex
-channels play the playlist's own titles: genres, networks and collections
-as sources come later there.
+description, keeping its own words (`ChannelTags.InDescription`).
+Genres, networks and collections fill a Plex channel too, as an empty
+playlist with its sources in the description: Plex's own genre, network
+(a show's broadcaster; for a movie, its studio) and collection lists, by
+name, in the libraries the channel keeps to, then narrowed by its type,
+years and ratings (`PlexClient.ChannelSourceTitlesAsync`).
 
 A channel with anything on it the user's parental controls hold back is
 left out, rather than shown with gaps: a playlist that lists more titles

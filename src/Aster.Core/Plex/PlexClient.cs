@@ -65,7 +65,7 @@ public static class PlexDevice
     }
 }
 
-public sealed partial class PlexClient : IMediaServer, Channels.IChannelServer
+public sealed partial class PlexClient : IMediaServer, Channels.IChannelServer, Channels.IChannelSources
 {
     /// <remarks>Redirects are followed by <see cref="Net.CredentialSafeRedirects"/>, so the token never goes to another host.</remarks>
     private static readonly HttpClient SharedHttp = Http30();
@@ -304,14 +304,11 @@ public sealed partial class PlexClient : IMediaServer, Channels.IChannelServer
     /// </summary>
     public async Task<string> CreatePlaylistAsync(string title, IReadOnlyList<string> itemIds, CancellationToken ct = default)
     {
-        var machine = await MachineIdentifierAsync(ct).ConfigureAwait(false);
-        var made = await ContainerAsync("/playlists", new Dictionary<string, string?>
-        {
-            ["type"] = "video",
-            ["title"] = title,
-            ["smart"] = "0",
-            ["uri"] = $"server://{machine}/com.plexapp.plugins.library/library/metadata/{string.Join(",", itemIds)}",
-        }, method: HttpMethod.Post, ct: ct).ConfigureAwait(false);
+        var query = new Dictionary<string, string?> { ["type"] = "video", ["title"] = title, ["smart"] = "0" };
+        // None: an empty one, which a genre's, network's or collection's channel is.
+        query["uri"] = itemIds.Count == 0 ? ""
+            : $"server://{await MachineIdentifierAsync(ct).ConfigureAwait(false)}/com.plexapp.plugins.library/library/metadata/{string.Join(",", itemIds)}";
+        var made = await ContainerAsync("/playlists", query, method: HttpMethod.Post, ct: ct).ConfigureAwait(false);
         return made.Metadata?.FirstOrDefault()?.RatingKey is { Length: > 0 } id ? id : throw JellyfinException.Decoding("Plex didn't say which playlist it made");
     }
 
@@ -323,6 +320,98 @@ public sealed partial class PlexClient : IMediaServer, Channels.IChannelServer
             shows.AddRange(await TitlesAsync($"/library/sections/{section.Key}/all", new Dictionary<string, string?> { ["type"] = "2" }, ct: ct).ConfigureAwait(false));
         return shows.OrderBy(s => s.SortName ?? s.Name, StringComparer.CurrentCultureIgnoreCase).ToList();
     }
+
+    // ---- Channels' genres, networks and collections ----
+
+    public async Task<IReadOnlyList<BaseItem>> ChannelSourceTitlesAsync(Channels.ChannelTags tags, CancellationToken ct = default)
+    {
+        // The libraries the channel keeps to (all, when it names none Plex has), of the kinds it plays.
+        var sections = (await SectionsAsync(ct).ConfigureAwait(false))
+            .Where(s => tags.Content switch
+            {
+                Channels.ChannelContent.Movies => s.Type == "movie",
+                Channels.ChannelContent.Shows => s.Type == "show",
+                _ => true,
+            })
+            .ToList();
+        var named = sections.Where(s => tags.Libraries.Contains(s.Title, StringComparer.OrdinalIgnoreCase)).ToList();
+        if (named.Count > 0) sections = named;
+
+        var found = new List<BaseItem>();
+        foreach (var section in sections)
+        {
+            var type = section.Type == "movie" ? "1" : "2";
+            var path = $"/library/sections/{section.Key}/all";
+            foreach (var key in await KeysAsync(section, "genre", tags.Genres, ct).ConfigureAwait(false))
+                found.AddRange(await TitlesAsync(path, new Dictionary<string, string?> { ["type"] = type, ["genre"] = key }, ct: ct).ConfigureAwait(false));
+            // A network is a show's broadcaster; a movie's is its studio, as Jellyfin has both.
+            if (section.Type == "show")
+            {
+                foreach (var key in await KeysAsync(section, "network", tags.Networks, ct).ConfigureAwait(false))
+                    found.AddRange(await TitlesAsync(path, new Dictionary<string, string?> { ["type"] = type, ["network"] = key }, ct: ct).ConfigureAwait(false));
+            }
+            else
+            {
+                foreach (var studio in (await DirectoryAsync(section, "studio", ct).ConfigureAwait(false)).Where(d => tags.Networks.Contains(d.Title, StringComparer.OrdinalIgnoreCase)))
+                    found.AddRange(await TitlesAsync(path, new Dictionary<string, string?> { ["type"] = type, ["studio"] = studio.Title }, ct: ct).ConfigureAwait(false));
+            }
+            if (tags.Collections.Count > 0)
+            {
+                var collections = await ContainerAsync($"/library/sections/{section.Key}/collections", ct: ct).ConfigureAwait(false);
+                foreach (var collection in (collections.Metadata ?? []).Where(c => tags.Collections.Contains(c.Title ?? "", StringComparer.OrdinalIgnoreCase)))
+                    found.AddRange(await TitlesAsync($"/library/collections/{collection.RatingKey}/children", ct: ct).ConfigureAwait(false));
+            }
+        }
+        // The channel's type, years and ratings; each title once.
+        return found.Where(t => Channels.ChannelLoader.Passes(t, tags)).DistinctBy(t => t.Id).ToList();
+    }
+
+    public Task<IReadOnlyList<BaseItem>> ChannelSeriesEpisodesAsync(string seriesId, CancellationToken ct = default) =>
+        TitlesAsync($"/library/metadata/{seriesId}/allLeaves", ct: ct);
+
+    public async Task<Channels.ChannelSourceNames> ChannelSourceNamesAsync(CancellationToken ct = default)
+    {
+        var sections = await SectionsAsync(ct).ConfigureAwait(false);
+        var genres = new List<string>();
+        var networks = new List<string>();
+        var collections = new List<string>();
+        var ratings = new List<string>();
+        foreach (var section in sections)
+        {
+            genres.AddRange((await DirectoryAsync(section, "genre", ct).ConfigureAwait(false)).Select(d => d.Title));
+            networks.AddRange((await DirectoryAsync(section, section.Type == "show" ? "network" : "studio", ct).ConfigureAwait(false)).Select(d => d.Title));
+            ratings.AddRange((await DirectoryAsync(section, "contentRating", ct).ConfigureAwait(false)).Select(d => d.Title));
+            collections.AddRange(((await ContainerAsync($"/library/sections/{section.Key}/collections", ct: ct).ConfigureAwait(false)).Metadata ?? [])
+                .Where(c => (c.ChildCount ?? 1) > 0).Select(c => c.Title ?? ""));
+        }
+        static IReadOnlyList<string> Sorted(IEnumerable<string> names) =>
+            names.Where(n => n.Length > 0).Distinct(StringComparer.OrdinalIgnoreCase).Order(StringComparer.CurrentCultureIgnoreCase).ToList();
+        return new(Sorted(genres), Sorted(networks), Sorted(collections), sections.Select(s => s.Title).ToList(), Sorted(ratings));
+    }
+
+    /// <summary>A library's genres, networks, studios or ratings (<paramref name="kind"/>), asked once each.</summary>
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, Task<IReadOnlyList<PlexDirectory>>> directories = new();
+
+    private async Task<IReadOnlyList<PlexDirectory>> DirectoryAsync(PlexDirectory section, string kind, CancellationToken ct)
+    {
+        var key = section.Key + "/" + kind;
+        var known = directories.GetOrAdd(key, _ => LoadDirectoryAsync(section, kind));
+        try { return await known.WaitAsync(ct).ConfigureAwait(false); }
+        catch (Exception) when (!ct.IsCancellationRequested)
+        {
+            // Asked again next time; a library without that list has none.
+            directories.TryRemove(key, out _);
+            return [];
+        }
+    }
+
+    private async Task<IReadOnlyList<PlexDirectory>> LoadDirectoryAsync(PlexDirectory section, string kind) =>
+        (await ContainerAsync($"/library/sections/{section.Key}/{kind}").ConfigureAwait(false)).Directory ?? [];
+
+    /// <summary>The ids of the <paramref name="names"/> in a library's list of <paramref name="kind"/>.</summary>
+    private async Task<IReadOnlyList<string>> KeysAsync(PlexDirectory section, string kind, IReadOnlyList<string> names, CancellationToken ct) =>
+        names.Count == 0 ? [] : (await DirectoryAsync(section, kind, ct).ConfigureAwait(false))
+            .Where(d => names.Contains(d.Title, StringComparer.OrdinalIgnoreCase)).Select(d => d.Key).ToList();
 
     /// <summary>The server's own id, which a playlist's titles are named by; asked once.</summary>
     private string? machineIdentifier;
