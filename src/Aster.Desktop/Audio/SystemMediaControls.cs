@@ -13,7 +13,7 @@ namespace Aster.Desktop.Audio;
 /// <param name="Artist">The song's artist, or the book's author.</param>
 /// <param name="Album">The song's album, or the book's chapter.</param>
 /// <param name="Artwork">The album's or book's cover.</param>
-/// <param name="Duration">The song's length, or the whole book's, in seconds.</param>
+/// <param name="Duration">The song's length, or the book's chapter's, in seconds.</param>
 /// <param name="Position">How far into it, in seconds.</param>
 /// <param name="IsBook">A book: its chapters for next and previous, 15 and 30 second skips, and its speed.</param>
 /// <param name="Id">Tells one song or book from the next.</param>

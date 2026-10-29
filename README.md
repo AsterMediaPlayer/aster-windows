@@ -522,7 +522,8 @@ app isn't in front: on Windows, the media overlay (by the volume flyout, on
 the lock screen, and a Bluetooth headset's buttons); on Linux, MPRIS (KDE's
 and GNOME's media applets, `playerctl`). They show the song, artist, album
 and cover, or the book, author, chapter and cover, with a timeline that can
-be dragged (across the whole book). Play, pause, next, previous and stop do
+be dragged (a book's is its chapter's,
+as the app's own bar is). Play, pause, next, previous and stop do
 what the keyboard's keys do (next and previous are a book's chapters);
 fast-forward and rewind skip a book 30 seconds ahead and 15 back. A video
 isn't shown there; the player has its own keys.

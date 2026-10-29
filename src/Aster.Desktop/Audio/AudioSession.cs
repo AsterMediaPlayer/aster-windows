@@ -95,9 +95,11 @@ public sealed partial class AudioSession : ObservableObject, IDisposable
         if (Books.Book is { } book)
         {
             var chapter = Books.CurrentChapter;
+            // The chapter's progress, as the app's own bar shows it, not the whole book's.
+            var (start, end) = Books.ChapterBounds;
             return new NowPlayingInfo(
                 book.Id, book.Title, book.Author, chapter?.Title ?? book.Series, client.PosterUrl(book.Cover, width: 600),
-                Books.BookDuration, Books.BookElapsed, Books.IsPlaying, IsBook: true, Books.Rate,
+                end - start, Math.Clamp(Books.CurrentTime - start, 0, end - start), Books.IsPlaying, IsBook: true, Books.Rate,
                 CanGoNext: chapter is not null && Books.Chapters.Any(c => c.Id == chapter.Id + 1), CanGoPrevious: true);
         }
         if (Music.Current is { } track)
@@ -130,10 +132,11 @@ public sealed partial class AudioSession : ObservableObject, IDisposable
         }
     }
 
-    /// <summary>A point on the system's timeline: in the song, or in the whole book.</summary>
+    /// <summary>A point on the system's timeline: in the song, or in the book's chapter.</summary>
     private void SeekTo(double seconds)
     {
-        if (Books.Book is not null) Books.SeekInBook(seconds);
+        // The part playing's start in the book, plus the chapter's in the part.
+        if (Books.Book is not null) Books.SeekInBook(Books.BookElapsed - Books.CurrentTime + Books.ChapterBounds.Start + seconds);
         else if (Music.Current is not null) Music.Seek(seconds);
     }
 
