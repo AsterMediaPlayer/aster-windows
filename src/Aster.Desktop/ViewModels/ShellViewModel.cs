@@ -141,6 +141,13 @@ public interface IServerAccounts
     /// <summary>Changes a saved server's settings: its password to switch, its Lock After.</summary>
     void Change(string id, Func<SavedServer, SavedServer> change);
 
+    /// <summary>
+    /// Asks for a saved server's password (a Plex profile's PIN), checked by
+    /// the server, before a change that loosens its lock; <paramref name="confirmed"/>
+    /// runs once it's right, back on the page it was asked from.
+    /// </summary>
+    void ConfirmPassword(SavedServer server, string purpose, string action, Action confirmed);
+
     /// <summary>Forgets a saved server (not the one in use), signing it out.</summary>
     void Remove(string id);
 

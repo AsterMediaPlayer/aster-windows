@@ -183,6 +183,16 @@ public partial class MainViewModel : ViewModelBase, IServerAccounts
         }, () => CurrentPage = back);
     }
 
+    public void ConfirmPassword(SavedServer server, string purpose, string action, Action confirmed)
+    {
+        var back = CurrentPage;
+        CurrentPage = new ServerPasswordViewModel(server, locking: false, _ =>
+        {
+            CurrentPage = back;
+            confirmed();
+        }, () => CurrentPage = back, purpose, action);
+    }
+
     public void Change(string id, Func<SavedServer, SavedServer> change)
     {
         Servers = SavedServers.Change(Servers, id, change);

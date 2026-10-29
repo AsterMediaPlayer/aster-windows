@@ -405,6 +405,11 @@ About pages on one page, as the Mac's Settings window has them:
   can ask for the user's password first, locks it after time away (5
   minutes to 4 hours, the window in the background, minimized or closed,
   but not while a video plays), checked by the server, and forgets it.
+  Loosening the lock (turning off the switch password, or setting Lock
+  After to Never or longer) asks for the password or PIN first, so someone
+  else at the computer can't. The check signs in as a device of its own and
+  straight out again, since Jellyfin ends a device's sign-in when that
+  device signs in again.
 - **Surround sound** (this computer): sends a video's Dolby and DTS audio
   over HDMI as it is, for the receiver or TV to decode, Dolby Atmos (in
   E-AC-3 or TrueHD) and DTS:X included: mpv's `audio-spdif` for AC-3,

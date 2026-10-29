@@ -106,6 +106,33 @@ public class JellyfinClientTests
         Assert.Equal("""{"Username":"Phil","Pw":"secret"}""", request.Body);
     }
 
+    /// <summary>
+    /// A password check before loosening a server's lock signs in as another
+    /// device, which Jellyfin doesn't end this one's sign-in for, and straight
+    /// out again with the token it got.
+    /// </summary>
+    [Fact]
+    public async Task CheckingAPasswordLeavesThisComputersSignIn()
+    {
+        var server = new StubServer(_ => (HttpStatusCode.OK, """{"User":{"Id":"u1","Name":"Phil"},"AccessToken":"check","ServerId":"s"}"""));
+        var client = server.Client(token: "in-use", userId: "u1");
+        await client.CheckPasswordAsync("Phil", "secret");
+
+        Assert.Equal(["/base/Users/AuthenticateByName", "/base/Sessions/Logout"], server.Requests.Select(r => r.Url.AbsolutePath));
+        Assert.All(server.Requests, r => Assert.DoesNotContain($"DeviceId=\"{JellyfinDevice.DeviceId}\"", r.Authorization));
+        Assert.DoesNotContain("in-use", server.Requests[0].Authorization);
+        Assert.Contains("Token=\"check\"", server.Requests[1].Authorization);
+        Assert.Equal("in-use", client.AccessToken);
+    }
+
+    [Fact]
+    public async Task AWrongPasswordFailsTheCheck()
+    {
+        var server = new StubServer(_ => (HttpStatusCode.Unauthorized, ""));
+        await Assert.ThrowsAsync<JellyfinException>(() => server.Client().CheckPasswordAsync("Phil", "wrong"));
+        Assert.Single(server.Requests);
+    }
+
     [Fact]
     public async Task QuickConnectAsksForACodeChecksItAndSignsInWithItsSecret()
     {

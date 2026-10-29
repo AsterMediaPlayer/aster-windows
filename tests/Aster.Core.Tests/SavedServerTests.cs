@@ -38,6 +38,31 @@ public class SavedServerTests
         Assert.Equal(["http://b/|u"], SavedServers.Forget(servers, "http://a/|u").Select(s => s.Id));
     }
 
+    /// <summary>A change that lets others past a server's lock asks for its password first; one that tightens it doesn't.</summary>
+    [Fact]
+    public void TurningOffTheSwitchPasswordLoosensTheLock()
+    {
+        var asks = new SavedServer { Session = Session("http://s/", "u"), AsksPasswordToSwitch = true };
+        Assert.True(asks.Loosens(asksToSwitch: false));
+        Assert.False(asks.Loosens(asksToSwitch: true));
+        Assert.False((asks with { AsksPasswordToSwitch = false }).Loosens(asksToSwitch: true));
+    }
+
+    [Fact]
+    public void ALongerOrNoLockLoosensIt()
+    {
+        var locked = new SavedServer { Session = Session("http://s/", "u"), LockAfterMinutes = 15 };
+        Assert.True(locked.Loosens(lockAfter: null));
+        Assert.True(locked.Loosens(lockAfter: 60));
+        Assert.False(locked.Loosens(lockAfter: 5));
+        Assert.False(locked.Loosens(lockAfter: 15));
+        // Nothing to loosen on a server that never locks.
+        Assert.False((locked with { LockAfterMinutes = null }).Loosens(lockAfter: 5));
+        // Nor on a Plex profile without a PIN, which can't be locked.
+        var plex = new SavedServer { Session = Session("http://p/", "u", kind: ServerKind.Plex), LockAfterMinutes = 15 };
+        Assert.False(plex.Loosens(lockAfter: null));
+    }
+
     [Fact]
     public void SigningInAgainKeepsTheServersLockSettings()
     {

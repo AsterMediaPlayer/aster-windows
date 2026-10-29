@@ -65,6 +65,9 @@ public sealed class JellyfinClient : IMediaServer
 
     private readonly HttpClient http;
 
+    /// <summary>The device it signs in as: this computer, or another for <see cref="CheckPasswordAsync"/>.</summary>
+    private string deviceId = JellyfinDevice.DeviceId;
+
     /// <param name="http">For tests; the app shares one client.</param>
     public JellyfinClient(Uri baseUrl, string? accessToken = null, string? userId = null, HttpClient? http = null, ServerKind kind = ServerKind.Jellyfin)
     {
@@ -75,7 +78,7 @@ public sealed class JellyfinClient : IMediaServer
         this.http = http ?? SharedHttp;
     }
 
-    public JellyfinClient SignedIn(string token, string userId) => new(BaseUrl, token, userId, http, Kind);
+    public JellyfinClient SignedIn(string token, string userId) => new(BaseUrl, token, userId, http, Kind) { deviceId = deviceId };
 
     /// <summary>The same server, known now to be <paramref name="kind"/> (from its public info).</summary>
     public JellyfinClient As(ServerKind kind) => new(BaseUrl, AccessToken, UserId, http, kind);
@@ -92,7 +95,7 @@ public sealed class JellyfinClient : IMediaServer
     {
         get
         {
-            var header = $"MediaBrowser Client=\"{JellyfinDevice.ClientName}\", Device=\"{HeaderValue(JellyfinDevice.DeviceName)}\", DeviceId=\"{JellyfinDevice.DeviceId}\", Version=\"{JellyfinDevice.Version}\"";
+            var header = $"MediaBrowser Client=\"{JellyfinDevice.ClientName}\", Device=\"{HeaderValue(JellyfinDevice.DeviceName)}\", DeviceId=\"{deviceId}\", Version=\"{JellyfinDevice.Version}\"";
             if (AccessToken is not null) header += $", Token=\"{AccessToken}\"";
             return header;
         }
@@ -261,6 +264,19 @@ public sealed class JellyfinClient : IMediaServer
 
     public Task<AuthenticationResult> AuthenticateWithQuickConnectAsync(string secret, CancellationToken ct = default) =>
         PostAsync<AuthenticationResult>("/Users/AuthenticateWithQuickConnect", body: new { Secret = secret }, ct: ct);
+
+    /// <summary>
+    /// Checks a user's password with the server, leaving this computer's
+    /// sign-in as it is: Jellyfin ends a device's old sign-in at its new one,
+    /// so the check signs in as a device of its own, and straight out again.
+    /// Throws as a sign-in does when the password is wrong.
+    /// </summary>
+    public async Task CheckPasswordAsync(string username, string password, CancellationToken ct = default)
+    {
+        var checking = new JellyfinClient(BaseUrl, http: http, kind: Kind) { deviceId = JellyfinDevice.DeviceId + "-check" };
+        var result = await checking.AuthenticateAsync(username, password, ct).ConfigureAwait(false);
+        await checking.SignedIn(result.AccessToken, result.User.Id).LogoutAsync().ConfigureAwait(false);
+    }
 
     public async Task LogoutAsync()
     {

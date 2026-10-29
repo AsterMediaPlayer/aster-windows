@@ -66,8 +66,15 @@ public sealed partial class SavedServerViewModel : ViewModelBase
 
     public IReadOnlyList<TrackChoice> LockAfterChoices =>
         new int?[] { null }.Concat(SavedServer.LockChoices.Select(m => (int?)m))
-            .Select((minutes, i) => new TrackChoice(i, SavedServer.LockTitle(minutes), minutes == LockAfter, new RelayCommand(() => LockAfter = minutes)))
+            .Select((minutes, i) => new TrackChoice(i, SavedServer.LockTitle(minutes), minutes == LockAfter, new RelayCommand(() => ChooseLockAfter(minutes))))
             .ToList();
+
+    /// <summary>Never, or a longer wait, asks for the password first, so nobody else can loosen the lock.</summary>
+    private void ChooseLockAfter(int? minutes)
+    {
+        if (server.Loosens(lockAfter: minutes)) accounts.ConfirmPassword(server, "change when it locks", "Change", () => LockAfter = minutes);
+        else LockAfter = minutes;
+    }
 
     partial void OnAsksPasswordToSwitchChanged(bool value) => Change(s => s with { AsksPasswordToSwitch = value });
     partial void OnLockAfterChanged(int? value) => Change(s => s with { LockAfterMinutes = value });
@@ -81,7 +88,14 @@ public sealed partial class SavedServerViewModel : ViewModelBase
         changed();
     }
 
-    [RelayCommand] private void FlipAsksPassword() => AsksPasswordToSwitch = !AsksPasswordToSwitch;
+    /// <summary>Turning it off asks for the password first, so nobody else can.</summary>
+    [RelayCommand]
+    private void FlipAsksPassword()
+    {
+        if (server.Loosens(asksToSwitch: !AsksPasswordToSwitch))
+            accounts.ConfirmPassword(server, "stop asking for it to switch", "Turn Off", () => AsksPasswordToSwitch = false);
+        else AsksPasswordToSwitch = !AsksPasswordToSwitch;
+    }
 
     [RelayCommand] private void SignInWithPlexAgain() => accounts.SignInWithPlexAgain();
 

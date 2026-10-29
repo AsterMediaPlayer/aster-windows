@@ -10,15 +10,22 @@ namespace Aster.Desktop.ViewModels;
 /// <summary>
 /// The user's own password for a saved server, checked by the server: to
 /// switch to it, when it's set to ask, or to carry on with it after Lock
-/// After (or use another server). The Apple app's ServerPasswordSheet and
-/// ServerLockView.
+/// After (or use another server), or before a change that loosens its lock
+/// (with <paramref name="purpose"/>, where the sign-in in use stays and
+/// <paramref name="passed"/> gets it back as it was). The Apple app's
+/// ServerPasswordSheet and ServerLockView.
 /// </summary>
-public sealed partial class ServerPasswordViewModel(SavedServer server, bool locking, Action<StoredSession> passed, Action other) : ViewModelBase
+/// <param name="purpose">What it's for, "change when it locks"; null to switch or unlock.</param>
+/// <param name="action">The button for <paramref name="purpose"/>: "Turn Off", "Change".</param>
+public sealed partial class ServerPasswordViewModel(SavedServer server, bool locking, Action<StoredSession> passed, Action other,
+    string? purpose = null, string? action = null) : ViewModelBase
 {
     public string ServerName => server.Name;
     public bool IsLock => locking;
 
-    public string Prompt => locking
+    public string Prompt => purpose is not null
+        ? $"Enter {server.Session.UserName}'s {Credential} to {purpose}."
+        : locking
         ? $"Enter {server.Session.UserName}'s {Credential} to carry on."
         : $"Enter {server.Session.UserName}'s {Credential} to switch to this {server.Session.Kind} server.";
 
@@ -27,7 +34,7 @@ public sealed partial class ServerPasswordViewModel(SavedServer server, bool loc
 
     public string Placeholder => server.Session.Kind == ServerKind.Plex ? "PIN" : "Password";
 
-    public string ActionTitle => locking ? "Unlock" : "Switch";
+    public string ActionTitle => action ?? (locking ? "Unlock" : "Switch");
     public string OtherTitle => locking ? "Use Another Server" : "Cancel";
 
     /// <summary>Empty is allowed: a user without a password gets in with none, as the server says.</summary>
@@ -50,7 +57,12 @@ public sealed partial class ServerPasswordViewModel(SavedServer server, bool loc
         Message = null;
         try
         {
-            passed(await server.SignInAgainAsync(Password));
+            if (purpose is null) passed(await server.SignInAgainAsync(Password));
+            else
+            {
+                await server.CheckPasswordAsync(Password);
+                passed(server.Session);
+            }
         }
         catch (Exception error) when (error is JellyfinException or HttpRequestException or TimeoutException)
         {
