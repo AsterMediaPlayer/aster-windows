@@ -82,6 +82,17 @@
                         </Button.Flyout>
                     </Button>
 
+                    <TextBlock Classes="section" Text="SURROUND SOUND" />
+                    <Button Classes="row" Command="{Binding FlipCommand}" CommandParameter="AudioPassthrough">
+                        <DockPanel>
+                            <TextBlock Classes="value" Text="{Binding AudioPassthrough, Converter={x:Static c:Converters.OnOff}}" />
+                            <TextBlock Text="Send surround sound to a receiver" VerticalAlignment="Center" />
+                        </DockPanel>
+                    </Button>
+                    <Border Classes="note">
+                        <TextBlock Text="A video's Dolby (including Dolby Atmos) and DTS sound goes over HDMI to your receiver or TV as it is, for it to decode. Use it only when this computer is connected by HDMI to one that decodes them; otherwise there may be no sound. While a video plays, Aster has the sound device to itself on Windows, so other apps go quiet, and the receiver's volume control sets the level. Music and audiobooks aren't affected. On Linux, the HDMI output must allow passthrough (in PipeWire, its Passthrough formats)." />
+                    </Border>
+
                     <TextBlock Classes="section" Text="SUBTITLES" IsVisible="{Binding KeepsLanguages}" />
                     <Button Classes="row" IsEnabled="{Binding HasConfiguration}" IsVisible="{Binding KeepsLanguages}" AutomationProperties.Name="Preferred subtitle language">
                         <DockPanel>

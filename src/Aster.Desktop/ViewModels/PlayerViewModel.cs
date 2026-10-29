@@ -121,12 +121,28 @@ public partial class PlayerViewModel : ViewModelBase
         _ = StartAsync();
     }
 
-    /// <summary>mpv's options, with the subtitle style chosen in Settings.</summary>
-    private Dictionary<string, string> Options() => new(MpvOptions)
+    /// <summary>mpv's options, with the subtitle style and the sound's way out chosen in Settings.</summary>
+    private Dictionary<string, string> Options()
     {
-        // Off: ASS and SSA lose their positions, drawings and fonts, as plain text at the bottom.
-        ["sub-ass-override"] = settings.StyledSubtitles ? "scale" : "strip",
-    };
+        var options = new Dictionary<string, string>(MpvOptions)
+        {
+            // Off: ASS and SSA lose their positions, drawings and fonts, as plain text at the bottom.
+            ["sub-ass-override"] = settings.StyledSubtitles ? "scale" : "strip",
+        };
+        if (settings.AudioPassthrough)
+        {
+            // Dolby and DTS go to the receiver untouched, which decodes them (Atmos and DTS:X
+            // with them); anything else (AAC, Opus, FLAC) still plays as ordinary sound.
+            options["audio-spdif"] = "ac3,eac3,dts,dts-hd,truehd";
+            if (OperatingSystem.IsWindows())
+            {
+                // E-AC-3, TrueHD and DTS-HD fit through HDMI only with the sound device to itself.
+                options["ao"] = "wasapi";
+                options["audio-exclusive"] = "yes";
+            }
+        }
+        return options;
+    }
 
     private static readonly Dictionary<string, string> MpvOptions = new()
     {

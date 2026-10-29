@@ -89,6 +89,7 @@ public sealed partial class SettingsViewModel : ViewModelBase
             case nameof(ThemeVideos): ThemeVideos = !ThemeVideos; break;
             case nameof(OpeningSound): OpeningSound = !OpeningSound; break;
             case nameof(ThemePanel): ThemePanel = !ThemePanel; break;
+            case nameof(AudioPassthrough): AudioPassthrough = !AudioPassthrough; break;
             case nameof(PreferDiscMenu): PreferDiscMenu = !PreferDiscMenu; break;
             case nameof(DiscMenuSounds): DiscMenuSounds = !DiscMenuSounds; break;
         }
@@ -124,6 +125,7 @@ public sealed partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] public partial bool ThemeVideos { get; set; }
     [ObservableProperty] public partial bool OpeningSound { get; set; }
     [ObservableProperty] public partial bool ThemePanel { get; set; }
+    [ObservableProperty] public partial bool AudioPassthrough { get; set; }
 
     public IReadOnlyList<SettingOption<ThemeCut>> ThemeCuts { get; } =
         Enum.GetValues<ThemeCut>().Select(cut => new SettingOption<ThemeCut>(cut.SettingTitle, cut)).ToList();
@@ -155,6 +157,7 @@ public sealed partial class SettingsViewModel : ViewModelBase
     partial void OnThemeVideosChanged(bool value) => Change(s => s with { ThemeVideos = value });
     partial void OnOpeningSoundChanged(bool value) => Change(s => s with { OpeningSound = value });
     partial void OnThemePanelChanged(bool value) => Change(s => s with { ThemePanel = value });
+    partial void OnAudioPassthroughChanged(bool value) => Change(s => s with { AudioPassthrough = value });
     partial void OnPreferDiscMenuChanged(bool value) => Change(s => s with { PreferDiscMenu = value });
     partial void OnDiscMenuSoundsChanged(bool value) => Change(s => s with { DiscMenuSounds = value });
 
@@ -181,6 +184,7 @@ public sealed partial class SettingsViewModel : ViewModelBase
         ThemeVideos = settings.ThemeVideos;
         OpeningSound = settings.OpeningSound;
         ThemePanel = settings.ThemePanel;
+        AudioPassthrough = settings.AudioPassthrough;
         ThemeCut = ThemeCuts.FirstOrDefault(c => c.Value == settings.ThemeCut) ?? ThemeCuts[0];
         PreferDiscMenu = settings.PreferDiscMenu;
         DiscMenuSounds = settings.DiscMenuSounds;

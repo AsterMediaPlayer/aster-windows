@@ -405,6 +405,14 @@ About pages on one page, as the Mac's Settings window has them:
   can ask for the user's password first, locks it after time away (5
   minutes to 4 hours, the window in the background, minimized or closed,
   but not while a video plays), checked by the server, and forgets it.
+- **Surround sound** (this computer): sends a video's Dolby and DTS audio
+  over HDMI as it is, for the receiver or TV to decode, Dolby Atmos (in
+  E-AC-3 or TrueHD) and DTS:X included: mpv's `audio-spdif` for AC-3,
+  E-AC-3, DTS, DTS-HD and TrueHD, through WASAPI in exclusive mode on
+  Windows (the lossless formats need it), so other apps go quiet while a
+  video plays and the receiver sets the volume. Music and audiobooks still
+  play as ordinary sound. On Linux the HDMI sink must allow passthrough
+  (PipeWire's Passthrough formats in pavucontrol, or `iec958` in ALSA).
 - **Channels (Beta)** opens Edit Channels (see Channels).
 
 ## The player

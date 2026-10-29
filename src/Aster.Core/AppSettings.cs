@@ -18,6 +18,14 @@ public sealed record AppSettings
     /// <summary>Skips intros by themselves, once each.</summary>
     public bool AutoSkipIntro { get; init; }
 
+    /// <summary>
+    /// A video's Dolby and DTS sound goes to the receiver (or TV) as it is,
+    /// over HDMI, for it to decode: Dolby Atmos (in E-AC-3 or TrueHD) and
+    /// DTS:X included. Off, mpv decodes it to plain multichannel sound. This
+    /// computer's own setting, as the receiver is: not synced.
+    /// </summary>
+    public bool AudioPassthrough { get; init; }
+
     /// <summary>ASS and SSA subtitles drawn as styled; off, as plain text at the bottom.</summary>
     public bool StyledSubtitles { get; init; } = true;
 
