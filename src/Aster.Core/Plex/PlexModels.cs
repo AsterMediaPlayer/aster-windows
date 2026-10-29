@@ -27,6 +27,9 @@ public sealed record PlexContainer
     public int? Size { get; init; }
     public int? TotalSize { get; init; }
     public int? Offset { get; init; }
+
+    /// <summary>The server's own id, in its /identity reply.</summary>
+    public string? MachineIdentifier { get; init; }
     [JsonPropertyName("Metadata")]
     public IReadOnlyList<PlexMetadata>? Metadata { get; init; }
     [JsonPropertyName("Directory")]

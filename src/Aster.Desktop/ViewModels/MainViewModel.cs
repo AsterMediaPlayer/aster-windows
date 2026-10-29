@@ -348,10 +348,17 @@ public partial class MainViewModel : ViewModelBase, IServerAccounts
         catch (Exception error) when (error is JellyfinException or System.Net.Http.HttpRequestException) { }
     }
 
-    /// <summary>For trying it (<c>--edit-channels</c>, with a playlist id for one channel alone): Edit Channels.</summary>
-    public void OpenEditChannels(string? only)
+    /// <summary>
+    /// For trying it (<c>--edit-channels</c>, with a playlist id for one
+    /// channel alone): Edit Channels; with <c>--new-channel</c>, a channel
+    /// made from that show as if it were picked.
+    /// </summary>
+    public void OpenEditChannels(string? only, string? newChannel = null)
     {
-        if (shell is { } open && open.Jellyfin is not null) open.Push(new EditChannelsViewModel(open, only));
+        if (shell is not { } open || open.Client is not Aster.Core.Channels.IChannelServer) return;
+        var page = new EditChannelsViewModel(open, only);
+        open.Push(page);
+        if (newChannel is not null) _ = page.MakeChannelAsync(newChannel);
     }
 
     /// <summary>For trying the pause screen (<c>--paused</c>): what <c>--play</c> plays pauses once it starts.</summary>

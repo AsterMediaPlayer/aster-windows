@@ -380,6 +380,26 @@ public sealed partial record ChannelTags
         return tags;
     }
 
+    /// <summary>
+    /// <paramref name="description"/> with its tags replaced by
+    /// <paramref name="tags"/>, on a line of their own after the
+    /// description's own words, which are kept as they were.
+    /// </summary>
+    public static string InDescription(string? description, IEnumerable<string> tags)
+    {
+        var own = new List<string>();
+        foreach (var line in (description ?? "").Replace("\r", "").Split('\n'))
+        {
+            // A line's words before its tags stay; the tags go.
+            var kept = EntryStart().Match(line) is { Success: true } start ? line[..start.Index].TrimEnd(' ', ',') : line;
+            if (kept.Length > 0 || !EntryStart().IsMatch(line)) own.Add(kept);
+        }
+        while (own.Count > 0 && own[^1].Trim().Length == 0) own.RemoveAt(own.Count - 1);
+        var entries = string.Join(", ", tags.Select(t => t.Trim()).Where(t => t.Length > 0));
+        if (entries.Length == 0) return string.Join("\n", own);
+        return own.Count == 0 ? entries : string.Join("\n", own) + "\n\n" + entries;
+    }
+
     /// <summary>"aster:" (or "asterfin:") starting a line, or after a space or comma.</summary>
     [GeneratedRegex(@"(?<![^\s,])aster(?:fin)?:", RegexOptions.IgnoreCase)]
     private static partial Regex EntryStart();

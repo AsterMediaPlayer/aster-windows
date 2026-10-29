@@ -129,7 +129,8 @@ These leave the saved session alone:
 - `--mini <channelId>` (with `--tab livetv`) tunes that channel straight
   into the Live TV header's mini player.
 - `--edit-channels [playlistId]` opens Edit Channels, or one channel's
-  settings alone.
+  settings alone; with `--new-channel "<show>"`, New Channel ▸ From a Show
+  makes a channel of that show, as if it were picked.
 - `ASTER_GAMEPAD_SCRIPT="10:down,12:a,14:b"` attaches a pretend game
   controller and presses its buttons that many seconds after starting (a,
   b, x, y, start, lb, rb, up, down, left, right; `hold-down` holds one a
@@ -345,10 +346,13 @@ playlist's description instead, as a list where a comma before the next
 `aster:` parts them: `aster:channel, aster:number=7, aster:user=alice,bob`
 (a comma inside a value stays in it, and the description's own words
 before them are left alone; `ChannelTags.FromDescription`). A Plex
-playlist is only its owner's, so its channels are too. For now they're set
-in Plex itself (Edit Channels is Jellyfin's and Emby's), and play the
-playlist's own titles: genres, networks and collections as sources come
-later there.
+playlist is only its owner's, so its channels are too, and anyone can make
+them. Edit Channels works there: From a Show makes a playlist of the show
+(Plex adds its episodes from the show's id, in order), From One of Your
+Playlists turns one on, and each change rewrites the tags at the end of the
+description, keeping its own words (`ChannelTags.InDescription`). Plex
+channels play the playlist's own titles: genres, networks and collections
+as sources come later there.
 
 A channel with anything on it the user's parental controls hold back is
 left out, rather than shown with gaps: a playlist that lists more titles

@@ -25,8 +25,8 @@ public sealed partial class ChannelsViewModel : ViewModelBase, IGuideSource, IRe
     /// <summary>Edit Channels: make channels and set them up (an administrator's; others see why not).</summary>
     [CommunityToolkit.Mvvm.Input.RelayCommand] private void EditChannels() => navigator.Push(new EditChannelsViewModel(navigator));
 
-    /// <summary>Edit Channels writes Jellyfin's and Emby's playlist tags; on Plex the description is edited in Plex, for now.</summary>
-    public bool CanEdit => navigator.Jellyfin is not null;
+    /// <summary>Edit Channels: playlist tags on Jellyfin and Emby, the description on Plex.</summary>
+    public bool CanEdit => navigator.Client is IChannelServer;
     private readonly ChannelLoader loader = new();
     private IReadOnlyList<PlaylistChannel> channels = [];
     private ChannelGrouping? grouping;

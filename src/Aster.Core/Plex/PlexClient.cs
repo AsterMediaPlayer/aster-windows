@@ -187,9 +187,9 @@ public sealed partial class PlexClient : IMediaServer, Channels.IChannelServer
     // ---- Asking ----
 
     /// <summary>One page of a list, by Plex's paging headers (as query parameters they're ignored).</summary>
-    private async Task<PlexContainer> ContainerAsync(string path, IReadOnlyDictionary<string, string?>? query = null, int? start = null, int? size = null, CancellationToken ct = default)
+    private async Task<PlexContainer> ContainerAsync(string path, IReadOnlyDictionary<string, string?>? query = null, int? start = null, int? size = null, HttpMethod? method = null, CancellationToken ct = default)
     {
-        var request = Request(Url(path, query));
+        var request = Request(Url(path, query), method);
         if (start is { } from) request.Headers.TryAddWithoutValidation("X-Plex-Container-Start", from.ToString(CultureInfo.InvariantCulture));
         if (size is { } count) request.Headers.TryAddWithoutValidation("X-Plex-Container-Size", count.ToString(CultureInfo.InvariantCulture));
         byte[] data;
@@ -213,7 +213,7 @@ public sealed partial class PlexClient : IMediaServer, Channels.IChannelServer
     }
 
     private async Task<IReadOnlyList<BaseItem>> TitlesAsync(string path, IReadOnlyDictionary<string, string?>? query = null, int? start = null, int? size = null, CancellationToken ct = default) =>
-        (await ContainerAsync(path, query, start, size, ct).ConfigureAwait(false)).Metadata?.Select(PlexMapper.Item).ToList() ?? [];
+        (await ContainerAsync(path, query, start, size, ct: ct).ConfigureAwait(false)).Metadata?.Select(PlexMapper.Item).ToList() ?? [];
 
     /// <summary>The server's movie and TV libraries, asked once.</summary>
     private Task<IReadOnlyList<PlexDirectory>>? sections;
@@ -285,6 +285,54 @@ public sealed partial class PlexClient : IMediaServer, Channels.IChannelServer
 
     public Task<IReadOnlyList<BaseItem>> PlaylistItemsAsync(string playlistId, CancellationToken ct = default) =>
         TitlesAsync($"/playlists/{playlistId}/items", ct: ct);
+
+    /// <summary>
+    /// Writes a channel's tags into its playlist's description, keeping the
+    /// description's own words (see <see cref="Channels.ChannelTags.InDescription"/>);
+    /// the description as written.
+    /// </summary>
+    public async Task<string> SetChannelTagsAsync(string playlistId, string? description, IEnumerable<string> tags, CancellationToken ct = default)
+    {
+        var written = Channels.ChannelTags.InDescription(description, tags);
+        await SendAsync(Request(Url($"/playlists/{playlistId}", new Dictionary<string, string?> { ["summary"] = written }), HttpMethod.Put), ct).ConfigureAwait(false);
+        return written;
+    }
+
+    /// <summary>
+    /// A video playlist of <paramref name="itemIds"/>, made by the user (only
+    /// theirs on Plex): a show's id brings all its episodes, in order. Its id.
+    /// </summary>
+    public async Task<string> CreatePlaylistAsync(string title, IReadOnlyList<string> itemIds, CancellationToken ct = default)
+    {
+        var machine = await MachineIdentifierAsync(ct).ConfigureAwait(false);
+        var made = await ContainerAsync("/playlists", new Dictionary<string, string?>
+        {
+            ["type"] = "video",
+            ["title"] = title,
+            ["smart"] = "0",
+            ["uri"] = $"server://{machine}/com.plexapp.plugins.library/library/metadata/{string.Join(",", itemIds)}",
+        }, method: HttpMethod.Post, ct: ct).ConfigureAwait(false);
+        return made.Metadata?.FirstOrDefault()?.RatingKey is { Length: > 0 } id ? id : throw JellyfinException.Decoding("Plex didn't say which playlist it made");
+    }
+
+    /// <summary>The shows in the server's TV libraries, by name, for a channel made from one.</summary>
+    public async Task<IReadOnlyList<BaseItem>> ShowsAsync(CancellationToken ct = default)
+    {
+        var shows = new List<BaseItem>();
+        foreach (var section in (await SectionsAsync(ct).ConfigureAwait(false)).Where(s => s.Type == "show"))
+            shows.AddRange(await TitlesAsync($"/library/sections/{section.Key}/all", new Dictionary<string, string?> { ["type"] = "2" }, ct: ct).ConfigureAwait(false));
+        return shows.OrderBy(s => s.SortName ?? s.Name, StringComparer.CurrentCultureIgnoreCase).ToList();
+    }
+
+    /// <summary>The server's own id, which a playlist's titles are named by; asked once.</summary>
+    private string? machineIdentifier;
+
+    private async Task<string> MachineIdentifierAsync(CancellationToken ct)
+    {
+        if (machineIdentifier is { } known) return known;
+        var identity = await ContainerAsync("/identity", ct: ct).ConfigureAwait(false);
+        return machineIdentifier = identity.MachineIdentifier ?? throw JellyfinException.Decoding("Plex didn't give its id");
+    }
 
     /// <summary>The user by name; Plex's restrictions aren't read, so nothing is held back by Channels itself.</summary>
     public Task<(string Name, UserPolicy? Policy)> ChannelViewerAsync(CancellationToken ct = default) =>

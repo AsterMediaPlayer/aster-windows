@@ -11,6 +11,7 @@ using System.Net.Http;
 using System.Threading.Tasks;
 using Aster.Core.Channels;
 using Aster.Core.Jellyfin;
+using Aster.Core.Plex;
 using Aster.Core.Server;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -102,6 +103,14 @@ public sealed partial class EditChannelsViewModel : ViewModelBase, IRefreshable
     [ObservableProperty] public partial string? Message { get; private set; }
 
     private JellyfinClient Client => navigator.JellyfinOnly;
+
+    /// <summary>
+    /// A Plex server: its playlists are the user's own, so anyone can make
+    /// channels of them; the tags go in a playlist's description, and a
+    /// channel is made from a show or a playlist (genres, networks and
+    /// collections as sources are Jellyfin's and Emby's for now).
+    /// </summary>
+    private PlexClient? Plex => navigator.Client as PlexClient;
     private bool CanEdit => isAdministrator == true && !refused;
 
     public void Refresh() => _ = LoadAsync();
@@ -145,6 +154,11 @@ public sealed partial class EditChannelsViewModel : ViewModelBase, IRefreshable
 
     private async Task LoadAsync()
     {
+        if (Plex is { } plex)
+        {
+            await LoadPlexAsync(plex);
+            return;
+        }
         var client = Client;
         var me = client.MeAsync();
         var genres = client.VideoGenresAsync();
@@ -177,6 +191,42 @@ public sealed partial class EditChannelsViewModel : ViewModelBase, IRefreshable
         loaded = true;
         OnPropertyChanged(nameof(Title));
         Rebuild();
+        loadedOnce.TrySetResult();
+    }
+
+    private async Task LoadPlexAsync(PlexClient plex)
+    {
+        var shows = plex.ShowsAsync();
+        try
+        {
+            playlists = (await plex.PlaylistsAsync("Video")).ToList();
+            Message = null;
+        }
+        catch (Exception error) when (IsServerError(error))
+        {
+            Message = error.Message;
+        }
+        isAdministrator = true;
+        seriesOptions = ((await OrNull(shows)) ?? []).Select(s => (s.Id, s.DisplayTitle)).ToList();
+        loaded = true;
+        OnPropertyChanged(nameof(Title));
+        Rebuild();
+        loadedOnce.TrySetResult();
+    }
+
+    /// <summary>Done when the page has first loaded: for <see cref="MakeChannelAsync"/>.</summary>
+    private readonly TaskCompletionSource loadedOnce = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+    /// <summary>
+    /// New Channel ▸ From a Show, as if <paramref name="showName"/> were
+    /// picked once the page has loaded: the debug flag --new-channel.
+    /// </summary>
+    public async Task MakeChannelAsync(string showName)
+    {
+        await loadedOnce.Task;
+        if (seriesOptions.FirstOrDefault(o => string.Equals(o.Name, showName, StringComparison.OrdinalIgnoreCase)) is { Id: not null } show)
+            await CreateAsync(NewChannelSource.Show, show.Id, show.Name);
+        else Message = $"No show called {showName}";
     }
 
     private static async Task<T?> OrNull<T>(Task<T> task) where T : class
@@ -214,7 +264,13 @@ public sealed partial class EditChannelsViewModel : ViewModelBase, IRefreshable
         Rebuild();
         try
         {
-            await Client.SetTagsAsync(updated, playlist.Id);
+            if (Plex is { } plex)
+            {
+                // Into the description, kept up to date for the next change.
+                var written = await plex.SetChannelTagsAsync(playlist.Id, playlists[index].Overview, updated);
+                if (playlists.FindIndex(p => p.Id == playlist.Id) is var at and >= 0) playlists[at] = playlists[at] with { Overview = written };
+            }
+            else await Client.SetTagsAsync(updated, playlist.Id);
             Message = null;
             // The Channels tab loads them again when next shown.
             navigator.UserDataChanged();
@@ -265,9 +321,19 @@ public sealed partial class EditChannelsViewModel : ViewModelBase, IRefreshable
         };
         try
         {
-            var episodes = source == NewChannelSource.Show ? (await Client.SeriesEpisodesAsync(id)).Select(e => e.Id).ToList() : [];
-            var playlistId = await Client.CreatePlaylistAsync(name, episodes, "Video", isPublic: true);
-            await Client.SetTagsAsync(tags.AppliedTo([]), playlistId);
+            string playlistId;
+            if (Plex is { } plex)
+            {
+                // The show's id brings all its episodes, in order.
+                playlistId = await plex.CreatePlaylistAsync(name, [id]);
+                await plex.SetChannelTagsAsync(playlistId, null, tags.AppliedTo([]));
+            }
+            else
+            {
+                var episodes = source == NewChannelSource.Show ? (await Client.SeriesEpisodesAsync(id)).Select(e => e.Id).ToList() : [];
+                playlistId = await Client.CreatePlaylistAsync(name, episodes, "Video", isPublic: true);
+                await Client.SetTagsAsync(tags.AppliedTo([]), playlistId);
+            }
             expanded.Add(playlistId);
             navigator.UserDataChanged();
             Message = null;
@@ -328,13 +394,16 @@ public sealed partial class EditChannelsViewModel : ViewModelBase, IRefreshable
             rows.Add(new EditSectionRow("NEW CHANNEL"));
             foreach (var source in Enum.GetValues<NewChannelSource>())
             {
+                if (Plex is not null && source is NewChannelSource.Genre or NewChannelSource.Network or NewChannelSource.Collection) continue;
                 var options = Options(source);
                 rows.Add(new EditChoiceRow(SourceTitle(source), isCreating ? "Making it…" : options.Count == 0 ? "None" : "",
                     options.Select((o, i) => new TrackChoice(i, o.Name, false, new RelayCommand(() => _ = CreateAsync(source, o.Id, o.Name), () => !isCreating))).ToList()));
             }
-            rows.Add(new EditNoteRow("A show plays its episodes in order; a genre, network or collection plays every movie and show in it. A playlist plays what you put in it. Each is shared with everyone on your server."));
+            rows.Add(new EditNoteRow(Plex is not null
+                ? "A show plays its episodes in order; a playlist plays what you put in it. On Plex a playlist, and so its channel, is only yours."
+                : "A show plays its episodes in order; a genre, network or collection plays every movie and show in it. A playlist plays what you put in it. Each is shared with everyone on your server."));
         }
-        if (playlists.Count == 0) rows.Add(new EditNoteRow("No video playlists yet. Make one in Jellyfin, or with Add to Playlist on any movie."));
+        if (playlists.Count == 0) rows.Add(new EditNoteRow(Plex is not null ? "No video playlists yet. Make one in Plex." : "No video playlists yet. Make one in Jellyfin, or with Add to Playlist on any movie."));
         var numbers = Numbers;
         foreach (var (playlist, tags) in Channels)
         {
@@ -485,7 +554,9 @@ public sealed partial class EditChannelsViewModel : ViewModelBase, IRefreshable
         }
         var users = userNames.Concat(tags.Users.Where(u => !userNames.Contains(u, StringComparer.OrdinalIgnoreCase))).ToList();
         if (users.Count > 0) rows.Add(Multi("Users", users, tags.Users, "Everyone", u => Update(playlist, t => t with { Users = u })));
-        rows.Add(new EditNoteRow("Every setting is a tag on the playlist in Jellyfin, so you can change it there too: see How Channels Work."));
+        rows.Add(new EditNoteRow(Plex is not null
+            ? "Every setting is kept in the playlist's description in Plex (aster:channel, aster:number=3, …), so you can change it there too: see How Channels Work."
+            : "Every setting is a tag on the playlist in Jellyfin, so you can change it there too: see How Channels Work."));
     }
 
     /// <summary>A row that opens or closes part of a channel's settings in place, with what's set there when closed.</summary>

@@ -287,8 +287,8 @@ public sealed partial class SettingsViewModel : ViewModelBase
     /// <summary>Disc menus come from a Jellyfin plugin: their page hides on Emby.</summary>
     public bool IsJellyfin => navigator.Jellyfin?.IsJellyfin == true;
 
-    /// <summary>Edit Channels: channels are playlist tags on Jellyfin and Emby alike.</summary>
-    public bool OffersChannels => navigator.Jellyfin is not null;
+    /// <summary>Edit Channels: channels are playlist tags on Jellyfin and Emby, and in a playlist's description on Plex.</summary>
+    public bool OffersChannels => navigator.Client is Aster.Core.Channels.IChannelServer;
 
     /// <summary>"Jellyfin version" or "Emby version".</summary>
     public string ServerVersionLabel => $"{navigator.Client.Kind} version";

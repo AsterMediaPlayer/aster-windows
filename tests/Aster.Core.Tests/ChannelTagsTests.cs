@@ -116,4 +116,15 @@ public class ChannelTagsTests
         Assert.True(tags.IsChannel);
         Assert.Equal(7, tags.Number);
     }
+    /// <summary>Writing a channel's tags into a description keeps its own words, and reads back as the same tags.</summary>
+    [Fact]
+    public void TagsAreWrittenIntoADescription()
+    {
+        Assert.Equal("aster:channel, aster:number=2", ChannelTags.InDescription(null, ["aster:channel", "aster:number=2"]));
+        var written = ChannelTags.InDescription("Cozy shows.\r\nFor Sundays. aster:channel\n\naster:number=1", ["aster:channel", "aster:user=alice,bob", "aster:number=4"]);
+        Assert.Equal("Cozy shows.\nFor Sundays.\n\naster:channel, aster:user=alice,bob, aster:number=4", written);
+        Assert.Equal(["aster:channel", "aster:user=alice,bob", "aster:number=4"], ChannelTags.FromDescription(written));
+        // No tags left: just the words.
+        Assert.Equal("Cozy shows.", ChannelTags.InDescription("Cozy shows.\n\naster:channel", []));
+    }
 }
