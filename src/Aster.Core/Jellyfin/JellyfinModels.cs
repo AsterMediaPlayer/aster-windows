@@ -189,6 +189,13 @@ public sealed record PersonInfo
     public string? PrimaryImageTag { get; init; }
 }
 
+/// <summary>A name with Emby's id for it, as its tags come.</summary>
+public sealed record NameIdPair
+{
+    public required string Name { get; init; }
+    public JsonElement? Id { get; init; }
+}
+
 public sealed record NameGuidPair
 {
     public string? Name { get; init; }
@@ -450,8 +457,15 @@ public sealed record BaseItem
     /// </summary>
     public IReadOnlyDictionary<string, IReadOnlyDictionary<string, TrickplayInfo>>? Trickplay { get; init; }
 
-    /// <summary>The item's tags in Jellyfin; a playlist's say whether it's a channel.</summary>
-    public IReadOnlyList<string>? Tags { get; init; }
+    /// <summary>The item's tags (Emby's from <see cref="TagItems"/>); a playlist's say whether it's a channel.</summary>
+    public IReadOnlyList<string>? Tags
+    {
+        get => field ?? TagItems?.Select(tag => tag.Name).ToList();
+        init;
+    }
+
+    /// <summary>Emby's tags: it sends and saves them as named pairs, not <see cref="Tags"/>.</summary>
+    public IReadOnlyList<NameIdPair>? TagItems { get; init; }
 
     public IReadOnlyList<MediaSourceInfo>? MediaSources { get; init; }
     public IReadOnlyList<MediaStream>? MediaStreams { get; init; }

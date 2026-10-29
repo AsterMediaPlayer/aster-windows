@@ -1213,7 +1213,9 @@ public sealed class JellyfinClient : IMediaServer
     {
         var data = await RawGetAsync($"/Users/{RequireUser()}/Items/{itemId}", new() { ["fields"] = EditableFields }, ct).ConfigureAwait(false);
         if (JsonNode.Parse(data) is not JsonObject record) throw JellyfinException.Decoding("The item's record wasn't readable");
-        record["Tags"] = new JsonArray([.. tags.Select(tag => JsonValue.Create(tag))]);
+        // Emby saves its TagItems and ignores Tags.
+        if (IsJellyfin) record["Tags"] = new JsonArray([.. tags.Select(tag => JsonValue.Create(tag))]);
+        else record["TagItems"] = new JsonArray([.. tags.Select(tag => new JsonObject { ["Name"] = tag })]);
         await PostRawAsync($"/Items/{itemId}", Encoding.UTF8.GetBytes(record.ToJsonString()), ct: ct).ConfigureAwait(false);
     }
 
@@ -1224,16 +1226,36 @@ public sealed class JellyfinClient : IMediaServer
         GetAsync<List<ParentalRating>>("/Localization/ParentalRatings", ct: ct);
 
     /// <summary>The user's playlists of one media type ("Audio" or "Video").</summary>
-    public async Task<IReadOnlyList<BaseItem>> PlaylistsAsync(string mediaType, CancellationToken ct = default) =>
-        (await JellyfinItemsAsync(new()
+    public async Task<IReadOnlyList<BaseItem>> PlaylistsAsync(string mediaType, CancellationToken ct = default)
+    {
+        var query = new Query
         {
             ["fields"] = ListFields + ",Tags",
             ["includeItemTypes"] = "Playlist",
-            ["mediaTypes"] = mediaType,
             ["recursive"] = "true",
             ["sortBy"] = "SortName",
             ["sortOrder"] = "Ascending",
-        }, ct).ConfigureAwait(false)).Items;
+        };
+        if (IsJellyfin)
+        {
+            query["mediaTypes"] = mediaType;
+            return (await JellyfinItemsAsync(query, ct).ConfigureAwait(false)).Items;
+        }
+        // Emby gives a playlist no media type, and asked for one drops the
+        // playlist filter and sends everything (people, genres, studios), so
+        // each playlist's kind is its first entry's. An empty one is either.
+        var playlists = (await JellyfinItemsAsync(query, ct).ConfigureAwait(false)).Items.Where(p => p.Type == "Playlist").ToList();
+        var kinds = await Task.WhenAll(playlists.Select(async playlist =>
+        {
+            try
+            {
+                var first = await GetAsync<ItemsResult>($"/Playlists/{playlist.Id}/Items", new() { ["userId"] = RequireUser(), ["limit"] = "1" }, ct).ConfigureAwait(false);
+                return first.Items.FirstOrDefault()?.MediaType;
+            }
+            catch (JellyfinException) { return null; }
+        })).ConfigureAwait(false);
+        return playlists.Where((_, i) => kinds[i] is null || string.Equals(kinds[i], mediaType, StringComparison.OrdinalIgnoreCase)).ToList();
+    }
 
     /// <summary>
     /// Creates a playlist holding the items and returns its id.

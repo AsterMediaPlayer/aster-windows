@@ -328,12 +328,17 @@ is tuned again in the header, a moment's gap where the Apple app has none.
 
 ## Channels (Beta)
 
-Channels are Jellyfin video playlists tagged as channels
+Channels are Jellyfin or Emby video playlists tagged as channels
 ([docs/channel-tags.md](https://github.com/AsterMediaPlayer/Aster-Media-Player/blob/main/docs/channel-tags.md)), so the server is the one
 place they live and every device finds the same ones. The tab shows when
 there are any: the Live TV guide, a week of it with a day picker, each
 channel's schedule worked out from the clock rather than fetched. What's on
 now tunes in; anything later opens its page.
+
+On Emby the tags are the playlist's `TagItems`, which Edit Channels writes
+(Emby ignores `Tags`), and a playlist's kind is its first entry's: Emby
+gives playlists no media type, and asked for one it drops the playlist
+filter.
 
 A channel with anything on it the user's parental controls hold back is
 left out, rather than shown with gaps: a playlist that lists more titles

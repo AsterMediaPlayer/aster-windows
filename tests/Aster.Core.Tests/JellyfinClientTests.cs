@@ -133,6 +133,45 @@ public class JellyfinClientTests
         Assert.Single(server.Requests);
     }
 
+    /// <summary>Emby's playlists: tags as TagItems, and no media type, so each one's kind is its first entry's.</summary>
+    [Fact]
+    public async Task EmbyPlaylistsAreFoundByTheirFirstEntry()
+    {
+        var server = new StubServer(request => request.Url.AbsolutePath switch
+        {
+            "/base/Items" => (HttpStatusCode.OK, """
+                {"Items":[
+                  {"Id":"v","Name":"Cute","Type":"Playlist","TagItems":[{"Name":"aster:channel","Id":768}]},
+                  {"Id":"a","Name":"Songs","Type":"Playlist","TagItems":[]},
+                  {"Id":"e","Name":"Empty","Type":"Playlist"},
+                  {"Id":"g","Name":"Comedy","Type":"Genre"}
+                ],"TotalRecordCount":4}
+                """),
+            "/base/Playlists/v/Items" => (HttpStatusCode.OK, """{"Items":[{"Id":"55","Name":"Ep","Type":"Episode","MediaType":"Video"}],"TotalRecordCount":1}"""),
+            "/base/Playlists/a/Items" => (HttpStatusCode.OK, """{"Items":[{"Id":"9","Name":"Song","Type":"Audio","MediaType":"Audio"}],"TotalRecordCount":1}"""),
+            _ => (HttpStatusCode.OK, """{"Items":[],"TotalRecordCount":0}"""),
+        });
+        var playlists = await server.Client(kind: ServerKind.Emby).PlaylistsAsync("Video");
+
+        Assert.Equal(["Cute", "Empty"], playlists.Select(p => p.Name));
+        Assert.Equal(["aster:channel"], playlists[0].Tags);
+        // Asked for a media type, Emby drops the playlist filter.
+        Assert.DoesNotContain("mediaTypes", server.Requests[0].Url.Query, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task EmbySavesTagsAsTagItems()
+    {
+        var server = new StubServer(request => request.Method == HttpMethod.Get
+            ? (HttpStatusCode.OK, """{"Id":"767","Name":"Cute","Type":"Playlist","TagItems":[]}""")
+            : (HttpStatusCode.NoContent, ""));
+        await server.Client(kind: ServerKind.Emby).SetTagsAsync(["aster:channel", "aster:number=4"], "767");
+
+        var body = System.Text.Json.JsonDocument.Parse(server.Requests[1].Body!).RootElement;
+        Assert.Equal(["aster:channel", "aster:number=4"], body.GetProperty("TagItems").EnumerateArray().Select(t => t.GetProperty("Name").GetString()));
+        Assert.False(body.TryGetProperty("Tags", out _));
+    }
+
     [Fact]
     public async Task QuickConnectAsksForACodeChecksItAndSignsInWithItsSecret()
     {

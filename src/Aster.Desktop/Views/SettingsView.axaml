@@ -41,7 +41,7 @@
                     <TextBlock Text="Title Pages" VerticalAlignment="Center" />
                 </DockPanel>
             </Button>
-            <Button Classes="row" Command="{Binding OpenChannelsCommand}" IsVisible="{Binding IsJellyfin}">
+            <Button Classes="row" Command="{Binding OpenChannelsCommand}" IsVisible="{Binding OffersChannels}">
                 <DockPanel>
                     <TextBlock Classes="chevron" />
                     <TextBlock Classes="icon" Text="&#xE714;" />
