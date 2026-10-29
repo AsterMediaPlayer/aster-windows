@@ -335,6 +335,14 @@ there are any: the Live TV guide, a week of it with a day picker, each
 channel's schedule worked out from the clock rather than fetched. What's on
 now tunes in; anything later opens its page.
 
+A channel with anything on it the user's parental controls hold back is
+left out, rather than shown with gaps: a playlist that lists more titles
+than the server sends the user. Genre, network and collection channels
+can't be counted that way, so a restricted user gets one only when its
+`rating=` tags keep it within their rating cap and nothing else (blocked
+or required tags, unrated titles, closed libraries) is restricted. Users
+without restrictions see every channel.
+
 `Aster.Core/Channels` is a port of the Apple app's channel code, kept to it
 exactly so a channel shows the same thing at the same moment on a Mac, an
 Apple TV and a PC: the tags (read and written as

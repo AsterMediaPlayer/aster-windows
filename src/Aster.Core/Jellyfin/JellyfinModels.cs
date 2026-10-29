@@ -87,6 +87,55 @@ public sealed record UserPolicy
 
     /// <summary>An administrator can edit any item's metadata, a playlist's tags included.</summary>
     public bool? IsAdministrator { get; init; }
+
+    /// <summary>
+    /// The parental controls on the user's profile: the highest rating's
+    /// score (and sub-score) allowed, tags blocked or required, item types
+    /// whose unrated titles are blocked, and whether only some libraries are open.
+    /// </summary>
+    public int? MaxParentalRating { get; init; }
+    public int? MaxParentalSubRating { get; init; }
+    public IReadOnlyList<string>? BlockedTags { get; init; }
+    public IReadOnlyList<string>? AllowedTags { get; init; }
+    public IReadOnlyList<string>? BlockUnratedItems { get; init; }
+    public bool? EnableAllFolders { get; init; }
+
+    /// <summary>Restrictions other than a rating cap: titles held back by tag, unrated titles, or libraries left closed.</summary>
+    [JsonIgnore]
+    public bool RestrictsBeyondRating =>
+        BlockedTags is { Count: > 0 } || AllowedTags is { Count: > 0 } || BlockUnratedItems is { Count: > 0 } || EnableAllFolders == false;
+
+    /// <summary>Whether the server holds anything back from this user.</summary>
+    [JsonIgnore]
+    public bool RestrictsContent => MaxParentalRating is not null || RestrictsBeyondRating;
+}
+
+/// <summary>
+/// A rating the server knows ("PG-13") and how it ranks: a user's
+/// <see cref="UserPolicy.MaxParentalRating"/> is compared with
+/// <see cref="Score"/>, then <see cref="SubScore"/>.
+/// </summary>
+public sealed record ParentalRating
+{
+    public required string Name { get; init; }
+
+    /// <summary>The rank on servers before Jellyfin 10.11.</summary>
+    public int? Value { get; init; }
+
+    /// <summary>Jellyfin 10.11+'s rank.</summary>
+    public ParentalRatingScore? RatingScore { get; init; }
+
+    [JsonIgnore]
+    public int? Score => RatingScore?.Score ?? Value;
+
+    [JsonIgnore]
+    public int? SubScore => RatingScore?.SubScore;
+}
+
+public sealed record ParentalRatingScore
+{
+    public int? Score { get; init; }
+    public int? SubScore { get; init; }
 }
 
 public sealed record AuthenticationResult

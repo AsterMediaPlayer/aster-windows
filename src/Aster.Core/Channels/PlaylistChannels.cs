@@ -166,10 +166,13 @@ public sealed class ChannelLoader
     /// The channels <paramref name="userName"/> gets (aster:user=), in
     /// channel-number order (group by group, once they have groups: see
     /// <see cref="ChannelTuner.Grouping"/>); a tagged playlist with nothing
-    /// to play is left out.
+    /// to play is left out, and so is one with anything on it the user's
+    /// parental controls hold back (see <see cref="IsHeldBack"/>).
     /// </summary>
     public async Task<IReadOnlyList<PlaylistChannel>> LoadAsync(JellyfinClient client, string? userName = null, bool force = false)
     {
+        // Read each time, so an administrator's change counts on the next visit.
+        var policy = (await client.MeAsync().ConfigureAwait(false)).Policy;
         var playlists = await client.PlaylistsAsync("Video").ConfigureAwait(false);
         var tagged = TaggedChannels(playlists).Where(t => userName is null || t.Tags.IsShownTo(userName)).ToList();
         var numbers = ChannelTags.Numbers(tagged.Select(t => (t.Playlist.Id, t.Tags.Name ?? t.Playlist.DisplayTitle, t.Tags.Number)));
@@ -191,10 +194,15 @@ public sealed class ChannelLoader
             if (items is not null) itemCache[playlist.Id] = (playlist.ChildCount, items);
         }
         await LoadSourcesAsync(tagged, client, force).ConfigureAwait(false);
+        // The ratings' ranks, only needed to clear a restricted user's genre, network or collection channel.
+        IReadOnlyList<ParentalRating> ratings = [];
+        if (policy is { RestrictsContent: true } && tagged.Any(t => t.Tags.HasSources && t.Tags.Ratings.Count > 0))
+            ratings = await client.ParentalRatingsAsync().ConfigureAwait(false);
 
         var built = new List<PlaylistChannel>();
         foreach (var (playlist, tags) in tagged)
         {
+            if (policy is not null && IsHeldBack(playlist, tags, itemCache.TryGetValue(playlist.Id, out var cached) ? cached.Items.Count : null, policy, ratings)) continue;
             var own = itemCache.GetValueOrDefault(playlist.Id).Items ?? [];
             var fromSources = tags.HasSources ? sourceCache.GetValueOrDefault(playlist.Id).Items ?? [] : [];
             var items = Merged(own, fromSources).Where(i => i.Kind is ItemKind.Movie or ItemKind.Episode).ToList();
@@ -311,6 +319,30 @@ public sealed class ChannelLoader
     }
 
     /// <summary>Whether a title from a collection fits a channel's years, ratings and type.</summary>
+    /// <summary>
+    /// Whether a channel has anything on it the user's parental controls hold
+    /// back, so it's left out rather than shown with gaps. The server leaves
+    /// those titles out of what it sends this user, so a playlist lists more
+    /// titles than came back (or none came back). Genres, networks and
+    /// collections can't be counted that way, so a restricted user gets such a
+    /// channel only when its own rating= tags keep it within their rating cap
+    /// and nothing else is restricted. A user without restrictions gets every
+    /// channel, whatever the counts.
+    /// </summary>
+    /// <param name="fetched">How many of the playlist's titles came back; null when it couldn't be fetched.</param>
+    public static bool IsHeldBack(BaseItem playlist, ChannelTags tags, int? fetched, UserPolicy policy, IReadOnlyList<ParentalRating> ratings)
+    {
+        if (!policy.RestrictsContent) return false;
+        if (playlist.ChildCount is > 0 and var listed && (fetched ?? 0) < listed) return true;
+        if (!tags.HasSources) return false;
+        if (policy.RestrictsBeyondRating || policy.MaxParentalRating is not { } cap || tags.Ratings.Count == 0) return true;
+        return tags.Ratings.Any(name =>
+        {
+            if (ratings.FirstOrDefault(r => string.Equals(r.Name, name, StringComparison.OrdinalIgnoreCase)) is not { Score: { } score } rating) return true;
+            return score > cap || (score == cap && (rating.SubScore ?? 0) > (policy.MaxParentalSubRating ?? int.MaxValue));
+        });
+    }
+
     public static bool Passes(BaseItem item, ChannelTags tags)
     {
         switch (item.Kind)

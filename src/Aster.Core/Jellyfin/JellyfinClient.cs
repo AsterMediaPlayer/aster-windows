@@ -1219,6 +1219,10 @@ public sealed class JellyfinClient : IMediaServer
 
     // ---- Playlists ----
 
+    /// <summary>The ratings the server knows, with how each ranks.</summary>
+    public Task<List<ParentalRating>> ParentalRatingsAsync(CancellationToken ct = default) =>
+        GetAsync<List<ParentalRating>>("/Localization/ParentalRatings", ct: ct);
+
     /// <summary>The user's playlists of one media type ("Audio" or "Video").</summary>
     public async Task<IReadOnlyList<BaseItem>> PlaylistsAsync(string mediaType, CancellationToken ct = default) =>
         (await JellyfinItemsAsync(new()
