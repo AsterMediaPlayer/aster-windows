@@ -265,11 +265,15 @@ public sealed partial class EditChannelsViewModel : ViewModelBase, IRefreshable
     /// Writes the playlist's tags with these channel settings, keeping its
     /// other tags; the page shows the change at once, and puts it back if the
     /// server refuses it. A channel numbered by itself keeps the number it
-    /// has now, so later channels don't move it.
+    /// has now, so later channels don't move it; and a change that would
+    /// move the others (on, off, a new number) first gives each of them the
+    /// number it has now.
     /// </summary>
-    private async Task SaveAsync(BaseItem playlist, ChannelTags tags)
+    private async Task SaveAsync(BaseItem playlist, ChannelTags tags, bool keepsOthers = true)
     {
         if (!CanEdit) return;
+        var before = ChannelTags.Parse(playlists.FirstOrDefault(p => p.Id == playlist.Id)?.Tags);
+        if (keepsOthers && (before.IsChannel != tags.IsChannel || before.Number != tags.Number)) await KeepNumbersAsync(except: playlist.Id);
         if (tags.Number is null && Numbers.TryGetValue(playlist.Id, out var number)) tags = tags with { Number = number };
         var index = playlists.FindIndex(p => p.Id == playlist.Id);
         if (index < 0) return;
@@ -300,6 +304,20 @@ public sealed partial class EditChannelsViewModel : ViewModelBase, IRefreshable
         }
     }
 
+    /// <summary>
+    /// Writes each channel numbered by itself (no aster:number) the number it
+    /// has now: those come after the highest number set, so a channel added,
+    /// removed or renumbered would otherwise move them.
+    /// </summary>
+    private async Task KeepNumbersAsync(string? except = null)
+    {
+        var numbers = Numbers;
+        foreach (var (playlist, tags) in Channels.Where(c => c.Tags.Number is null && c.Playlist.Id != except).ToList())
+        {
+            if (numbers.TryGetValue(playlist.Id, out var number)) await SaveAsync(playlist, tags with { Number = number }, keepsOthers: false);
+        }
+    }
+
     /// <summary>Makes a playlist a channel, with the next free number and its picture as the logo when it has one, unless its tags say otherwise.</summary>
     private void TurnOn(BaseItem playlist)
     {
@@ -325,6 +343,8 @@ public sealed partial class EditChannelsViewModel : ViewModelBase, IRefreshable
         if (!CanEdit || isCreating) return;
         isCreating = true;
         Rebuild();
+        // Its number goes past the highest, which would move the channels numbered by themselves.
+        await KeepNumbersAsync();
         var tags = new ChannelTags { IsChannel = true, Number = Numbers.Values.DefaultIfEmpty(0).Max() + 1 };
         tags = source switch
         {

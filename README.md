@@ -409,7 +409,11 @@ logo's place and look, filler types, bumpers, commercial time, promos,
 trailers, interstitials, line-up and fit, break spacing, users) under
 Advanced. Each change writes the playlist's tags at once, keeping its other
 tags, and is put back if the server refuses; How Channels Work lists every
-tag. Others see that only an administrator can set channels up.
+tag. Others see that only an administrator can set channels up. A
+channel without a number of its own comes after the highest one set, so
+before a change that would move it (a channel added, turned on or off, or
+renumbered) Edit Channels writes each such channel the number it has now.
+The Apple app doesn't yet, and keeps numbering them afresh.
 
 ## Settings
 
