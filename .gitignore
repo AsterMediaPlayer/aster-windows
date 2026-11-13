@@ -6,7 +6,3 @@ TestResults/
 native/
 publish/
 __pycache__/
-# Flatpak builds (packaging/flatpak)
-build-dir/
-.flatpak-builder/
-*.flatpak

@@ -2,9 +2,9 @@
   <img src="docs/screenshots/home.jpg" alt="Aster Media Player Home screen" width="100%">
 </p>
 
-# Aster Media Player for Linux
+# Aster Media Player for Windows
 
-A client for Jellyfin, Emby and Plex on Linux, made for the couch: a game controller works everywhere, and it runs full screen from Steam, gamescope or Plasma Bigscreen. Written in C# with Avalonia, as a port of the [Apple app](https://github.com/AsterMediaPlayer/aster-apple). Aster for Windows has its own home, at [aster-windows](https://github.com/AsterMediaPlayer/aster-windows).
+A client for Jellyfin, Emby and Plex on Windows, made for the couch: a game controller works everywhere, and it runs full screen from Steam Big Picture. Written in C# with Avalonia, as a port of the [Apple app](https://github.com/AsterMediaPlayer/aster-apple). Aster for Linux has its own home, at [aster-linux](https://github.com/AsterMediaPlayer/aster-linux).
 
 Aster covers movies, TV, anime, music, audiobooks and live TV, and can turn your playlists into TV-style channels. Title pages are laid out like the Apple TV app, with theme music, theme videos and trailers, and Aster plays DVD/Blu-ray-style disc menus. Videos play in **mpv**, from the original file, with every audio and subtitle track switchable on the spot.
 
@@ -14,16 +14,13 @@ With Aster's server plugin you can discover and request new titles through Seerr
 
 ## Get Aster
 
-Aster Media Player is free, and always will be: on every platform, with every feature, and no paid version. It's open source. Download the latest from [Releases](https://github.com/AsterMediaPlayer/aster-linux/releases), for 64-bit x86 or ARM:
+Aster Media Player is free, and always will be: on every platform, with every feature, and no paid version. It's open source. Download the latest from [Releases](https://github.com/AsterMediaPlayer/aster-windows/releases), for Windows 10 (1809) or later, 64-bit:
 
-- **Debian, Ubuntu, Mint, Pop!_OS:** the `.deb`: `sudo apt install ./aster_…_amd64.deb`, which brings the mpv library with it.
-- **Fedora, openSUSE:** the `.rpm`: `sudo dnf install ./aster-….x86_64.rpm` (or `zypper install`).
-- **Arch, Manjaro, CachyOS:** the `.pkg.tar.zst`: `sudo pacman -U aster-….pkg.tar.zst`.
-- **Flatpak**, on any distribution: `flatpak install --user Aster-….flatpak`, with mpv and the trailer player inside it.
-- **Anything else:** unpack the `.tar.gz` and run `./install.sh`, which puts Aster in `~/.local/opt/aster` with a menu entry (`./install.sh --uninstall` removes it). It needs your distribution's mpv library (`libmpv2`, `mpv-libs` or `mpv`).
+- **Installer:** `…-windows-x64-setup.exe` installs it for you alone (no administrator needed), with a Start menu shortcut.
+- **Portable:** the `.zip` runs from any folder.
 - **Build it yourself:** see [Building](#building) below.
 
-Trailers play in the app with WebKitGTK 4.1 and GStreamer's good plugins installed (the packages recommend them, and the Flatpak has them); without them they open in the browser. Updating or uninstalling keeps your sign-ins and settings.
+The app isn't signed yet, so SmartScreen may warn the first time: choose **More info → Run anyway**. Trailers play in the app with WebView2. Updating or uninstalling keeps your sign-ins and settings.
 
 ## Screenshots
 
@@ -40,18 +37,17 @@ Full screen at 1920×1080, from a demo Jellyfin server of openly licensed films,
 
 ## Platforms
 
-| | Desktop (KDE, GNOME, …) | Steam Big Picture, gamescope (Steam Deck) | Plasma Bigscreen |
-| --- | :---: | :---: | :---: |
-| Browsing, title pages, search, Live TV, Channels, music and audiobooks | ✓ | ✓ | ✓ |
-| mpv player, with hardware decoding (VA-API, NVDEC) | ✓ | ✓ | ✓ |
-| Game controllers, everywhere in the app | ✓ | ✓ | ✓ |
-| Full screen for good, sized for the TV | | ✓ | |
-| Continue Watching on the home screen | | | ✓ |
-| The system's media controls (MPRIS) | ✓ | | ✓ |
-| Trailers in the app (WebKitGTK) | ✓ | ✓ | ✓ |
-| Surround sound to a receiver (Dolby, DTS, Atmos), and Sonos for music | ✓ | ✓ | ✓ |
+| | Desktop | Steam Big Picture |
+| --- | :---: | :---: |
+| Browsing, title pages, search, Live TV, Channels, music and audiobooks | ✓ | ✓ |
+| mpv player, with hardware decoding (D3D11) | ✓ | ✓ |
+| Game controllers, everywhere in the app | ✓ | ✓ |
+| Full screen for good, sized for the TV | | ✓ |
+| Windows' media controls (the overlay by the volume flyout, and the lock screen) | ✓ | ✓ |
+| Trailers in the app (WebView2) | ✓ | ✓ |
+| Surround sound to a receiver (Dolby, DTS, Atmos), and Sonos for music | ✓ | ✓ |
 
-Packages for x64 and ARM64: `.deb`, `.rpm`, Arch, Flatpak (x64) and a tarball.
+Downloads for x64: an installer and a portable zip.
 
 ## Features
 
@@ -71,8 +67,8 @@ Packages for x64 and ARM64: `.deb`, `.rpm`, Arch, Flatpak (x64) and a tarball.
 - **Controls:** Space or K to pause, ← → to skip 10 seconds, ↑ ↓ for volume, A and S for the next audio and subtitle track, F for full screen, and Fill Screen to zoom a wide film to the edges. A controller's buttons do the same, and Y sends a video to a mini player in the corner while you browse.
 - **Chapters and previews:** chapters are marked on the timeline and listed in a menu, and scrubbing shows the frame, from Jellyfin's trickplay images or Emby's BIF previews.
 - **Pause screen:** the title's logo and details, with a long description scrolling slowly; on a channel, what's on and what's next. A video also pauses when Aster goes behind another window.
-- **System media controls:** the video, song or book playing shows in KDE's and GNOME's media applets (MPRIS), and their buttons work it.
-- **Sound:** Dolby and DTS (Atmos and DTS:X included) pass through to a receiver or soundbar as they are (and on Linux, Aster says which app is holding the output when one is in the way). Or even out the volume, or mix surround down to stereo with the dialogue clear.
+- **System media controls:** the video, song or book playing shows in Windows' media overlay (by the volume flyout, and on the lock screen), and its buttons and a Bluetooth headset's work it.
+- **Sound:** Dolby and DTS (Atmos and DTS:X included) pass through to a receiver or soundbar as they are. Or even out the volume, or mix surround down to stereo with the dialogue clear.
 
 ### Subtitles
 - **ASS/SSA** drawn as the release intended: signs where they belong, drawings, and the fonts embedded in the file. Turn it off for plain text in Settings ▸ Video ▸ Audio & Subtitles.
@@ -130,12 +126,11 @@ For a household on one account: profiles from the [Bonfire](https://github.com/A
 
 ### Couch and Steam
 - **Game controllers** drive the whole app (Xbox, PlayStation, Switch Pro, 8BitDo and most others): the d-pad or left stick moves, A opens, B goes back, X plays or pauses, Y sends a video to the mini player, and the shoulder buttons skip songs, chapters or channels. A Nintendo-style layout swaps A and B, X and Y (Settings ▸ General).
-- **Steam:** add Aster as a non-Steam game. In Big Picture or gamescope (a Steam Deck's Game Mode) it runs full screen for good, sized for the TV.
-- **Plasma Bigscreen:** a Continue Watching row on Bigscreen's home screen, from the server you're signed in to; picking a title there plays it in Aster (after the PIN, for a profile with one). Each saved server's page can turn it on or off.
+- **Steam:** add Aster as a non-Steam game. In Big Picture it runs full screen for good, sized for the TV.
 - **The keyboard** works like a TV remote: the arrows move, Enter chooses, Esc goes back, Ctrl+F searches.
 
 ### Everywhere
-- **Sign-in:** password or Quick Connect on Jellyfin, password on Emby, and a plex.tv link code on Plex (then a Plex Home profile, with its PIN, and a server). Several servers and users can be saved, each can ask for its password or PIN before switching to it, and each can lock after a while away. Sign-ins are kept in your desktop's keyring (KWallet, GNOME Keyring).
+- **Sign-in:** password or Quick Connect on Jellyfin, password on Emby, and a plex.tv link code on Plex (then a Plex Home profile, with its PIN, and a server). Several servers and users can be saved, each can ask for its password or PIN before switching to it, and each can lock after a while away. Sign-ins are kept in Windows Credential Manager.
 - **Welcome:** the first time on a Jellyfin server, a few cards show what Aster does, and a server administrator can install Aster's companion plugins from there.
 - **Settings that follow you** (Jellyfin and Emby): Up Next, skipping intros, styled subtitles, disc menus, theme music and videos, the opening sound and song cards are kept on your server, so they match on every device, the Apple app included.
 - **Server plugins** (Settings ▸ Server Plugins, Jellyfin): see which of Aster's plugins your server has; an administrator can install them, turn them on or off, and restart the server.
@@ -154,7 +149,6 @@ For a household on one account: profiles from the [Bonfire](https://github.com/A
 | Household profiles, with PINs and a PIN lock | ✓ (Bonfire) | | ✓ (Plex Home) |
 | Music, audiobooks, Live TV, playlists, Upcoming | ✓ | ✓ | |
 | Favourites, scrubbing previews, lyrics, settings that follow you | ✓ | ✓ | |
-| Bigscreen's Continue Watching row | ✓ | ✓ | |
 | Quick Connect, disc menus, Discover, Seerr, tracking | ✓ | | |
 
 ### Jellyfin
@@ -180,20 +174,18 @@ Aster's own plugins are published in the [Aster Companion Plugins](https://githu
 
 ## Building
 
-Needs the [.NET 10 SDK](https://dotnet.microsoft.com/download) and your distribution's mpv library (`libmpv2`, `mpv-libs` or `mpv`), and OpenGL from a graphics driver for video.
+Needs the [.NET 10 SDK](https://dotnet.microsoft.com/download) (`winget install Microsoft.DotNet.SDK.10`). The first build downloads libmpv (about 120 MB) into `native/` with `tools/fetch-libmpv.ps1`, pinned to one build and checked against its hash.
 
-```sh
-git clone https://github.com/AsterMediaPlayer/aster-linux.git
-cd aster-linux
+```powershell
+git clone https://github.com/AsterMediaPlayer/aster-windows.git
+cd aster-windows
 dotnet run --project src/Aster.Desktop
 dotnet test
 ```
 
-A self-contained build (no .NET needed where it runs) is `dotnet publish src/Aster.Desktop -c Release -r linux-x64 --self-contained -o publish/linux` (or `linux-arm64`).
+A self-contained build (no .NET needed where it runs) is `dotnet publish src/Aster.Desktop -c Release -r win-x64 --self-contained -o publish/win-x64`.
 
-The Flatpak builds with `flatpak-builder --user --install --force-clean build-dir packaging/flatpak/com.astermediaplayer.Aster.yml`. It builds mpv and WebKitGTK inside it, so the first build takes a while (WebKit alone is the better part of an hour); after that it's cached.
-
-A release is made by pushing a version tag (`git tag v0.11.0-beta`, then `git push origin v0.11.0-beta`): the Release workflow builds, for x64 and ARM64, the tarball, `.deb`, `.rpm` and Arch package (`packaging/linux/nfpm.yaml`), and publishes them, as a pre-release when the version has a suffix. Run by hand from the Actions tab, it only builds them.
+A release is made by pushing a version tag (`git tag v0.11.0-beta`, then `git push origin v0.11.0-beta`): the Release workflow builds the installer (`installer/aster.iss`, with Inno Setup) and the zip, and publishes them, as a pre-release when the version has a suffix. Run by hand from the Actions tab, it only builds them.
 
 How the app is put together screen by screen, and the switches for trying it against a server, are in [docs/development.md](docs/development.md).
 
@@ -201,20 +193,19 @@ How the app is put together screen by screen, and the switches for trying it aga
 
 | Folder | Contents |
 | --- | --- |
-| `src/Aster.Core` | The server-neutral `IMediaServer` every screen asks; the Jellyfin and Emby client, the Plex client and plex.tv sign-in; models, settings and their sync; household profiles and the Bonfire client; channels, disc menus, anime openings and endings, audiobooks, Seerr and tracking, ratings, Bigscreen's home screen row, debug reports |
+| `src/Aster.Core` | The server-neutral `IMediaServer` every screen asks; the Jellyfin and Emby client, the Plex client and plex.tv sign-in; models, settings and their sync; household profiles and the Bonfire client; channels, disc menus, anime openings and endings, audiobooks, Seerr and tracking, ratings, debug reports |
 | `src/Aster.Mpv` | Bindings for libmpv: the player, its events, and OpenGL rendering into the app |
 | `src/Aster.Desktop` | The Avalonia app: every screen, the video player, the music, audiobook and theme players, Sonos, game controllers, the system's media controls |
 | `tests/Aster.Core.Tests` | Unit tests, the disc menu and channel tag conformance vectors, and libmpv against a clip made by ffmpeg |
-| `packaging` | The Flatpak, the `.deb`/`.rpm`/Arch description, the tarball's installer, and the menu entries |
+| `installer` | The Windows installer (Inno Setup) |
+| `tools` | Fetching libmpv for the build, and making the bundled icon font |
 
 ## Known limitations
 
 - **HDR** is tone-mapped to SDR: the video is drawn through OpenGL so the controls can sit on top of it.
 - **No downloads** for watching or listening offline yet.
-- **Trailers** on Linux need WebKitGTK 4.1 and GStreamer's good plugins; without them they open in the browser.
 - **Chinese titles** sort under # in the A–Z index: .NET has no pinyin table.
-- **Flatpak:** the Plasma Bigscreen row isn't offered, as the sandbox can't reach Bigscreen's home screen.
-- **Plasma Bigscreen** has no way for an app to add a row, so Aster puts a patched copy of its home screen in your own Plasma folder, made from whatever version is installed; an update to Bigscreen that it doesn't fit is left alone.
+- **x64 only:** there's no ARM64 download yet.
 - **Profiles:** a profile's picture is one of Bonfire's own, not one of yours yet. Plex Home profiles are switched between here, but not added or changed: do that at plex.tv.
 - **Anime without the OP-ED plugin:** openings and endings are found from chapter names, and their songs from AnimeThemes by the show's name and year, which can miss or pick the wrong season.
 - **Plex:** music, audiobooks, Live TV, playlists, Upcoming, favourites and scrubbing previews aren't built yet, so they're hidden on Plex.
@@ -223,13 +214,13 @@ How the app is put together screen by screen, and the switches for trying it aga
 
 | Component | License |
 | --- | --- |
-| [mpv](https://mpv.io) (libmpv: your system's, or inside the Flatpak) | GPL-2.0-or-later / LGPL-2.1-or-later |
+| [mpv](https://mpv.io) (shinchiro's build of libmpv, included) | GPL-2.0-or-later / LGPL-2.1-or-later |
 | ↳ [FFmpeg](https://ffmpeg.org), [libass](https://github.com/libass/libass), [libplacebo](https://code.videolan.org/videolan/libplacebo) | LGPL-2.1 / GPL (FFmpeg), ISC (libass), LGPL-2.1 (libplacebo) |
-| [WebKitGTK](https://webkitgtk.org) (inside the Flatpak; your system's otherwise) | LGPL-2.1 / BSD |
 | [Avalonia](https://avaloniaui.net), [SkiaSharp and HarfBuzzSharp](https://github.com/mono/SkiaSharp) | MIT |
+| [ANGLE](https://angleproject.org) | BSD-3-Clause |
 | [.NET](https://dotnet.microsoft.com) | MIT |
 | [SDL](https://libsdl.org) and [SDL3-CS](https://github.com/ppy/SDL3-CS) | Zlib, MIT |
-| [CommunityToolkit.Mvvm](https://github.com/CommunityToolkit/dotnet), [Tmds.DBus](https://github.com/tmds/Tmds.DBus), MicroCom | MIT |
+| [CommunityToolkit.Mvvm](https://github.com/CommunityToolkit/dotnet), [C#/WinRT](https://github.com/microsoft/CsWinRT), MicroCom | MIT |
 | [Inter](https://rsms.me/inter) | SIL Open Font License 1.1 |
 | [Fluent UI System Icons](https://github.com/microsoft/fluentui-system-icons) | MIT |
 

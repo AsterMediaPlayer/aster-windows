@@ -1,5 +1,5 @@
-# Builds the app and runs the tests on Linux, for every push to main and
-# every pull request. (Windows builds and releases are aster-windows'.)
+# Builds the app and runs the tests on Windows, for every push to main and
+# every pull request. (Linux builds and releases are aster-linux'.)
 name: CI
 
 on:
@@ -20,20 +20,23 @@ env:
   DOTNET_CLI_TELEMETRY_OPTOUT: true
 
 jobs:
-  linux:
-    name: Linux
-    runs-on: ubuntu-24.04
+  windows:
+    name: Windows
+    runs-on: windows-latest
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-dotnet@v5
         with:
           dotnet-version: 10.0.x
-      # The system's libmpv, as on a user's machine, and ffmpeg so the libmpv
-      # tests run against a real clip.
-      - name: Install libmpv and ffmpeg
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libmpv2 ffmpeg
+      # libmpv (about 120 MB) is fetched by the build; keep it between runs,
+      # keyed on the script that pins its version and hash.
+      - uses: actions/cache@v4
+        with:
+          path: native
+          key: libmpv-${{ hashFiles('tools/fetch-libmpv.ps1') }}
       - name: Build
         run: dotnet build Aster.slnx -c Release
+      # ffmpeg isn't on the runner, so the libmpv tests that need a clip skip themselves.
       - name: Test
         run: dotnet test Aster.slnx -c Release --no-build

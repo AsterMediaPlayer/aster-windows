@@ -29,7 +29,7 @@ public sealed class OpenSourceViewModel : ViewModelBase
 {
     public static readonly OpenSourceComponent Aster = new(
         "Aster Media Player", "This app. Its source is published at the address shown.",
-        "MPL-2.0", "https://github.com/AsterMediaPlayer/aster-linux", ["Aster-MPL-2.0"]);
+        "MPL-2.0", OperatingSystem.IsWindows() ? "https://github.com/AsterMediaPlayer/aster-windows" : "https://github.com/AsterMediaPlayer/aster-linux", ["Aster-MPL-2.0"]);
 
     /// <summary>Every component in the app on this system, by what it's for.</summary>
     public static IReadOnlyList<(string Title, IReadOnlyList<OpenSourceComponent> Components)> Groups(bool windows) =>

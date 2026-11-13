@@ -1,5 +1,5 @@
 name: Bug report
-description: Something in Aster for Windows and Linux doesn't work or looks wrong
+description: Something in Aster for Windows doesn't work or looks wrong
 labels: [bug]
 body:
   - type: markdown
@@ -56,7 +56,6 @@ body:
       options:
         - "Windows (installer)"
         - "Windows (zip)"
-        - "Linux"
     validations:
       required: true
   - type: input
@@ -67,8 +66,8 @@ body:
   - type: input
     id: os
     attributes:
-      label: "OS version (and Linux distribution)"
-      placeholder: "Windows 11 24H2, Ubuntu 24.04 with libmpv2"
+      label: "Windows version"
+      placeholder: "Windows 11 24H2"
     validations:
       required: true
   - type: input

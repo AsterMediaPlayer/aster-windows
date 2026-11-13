@@ -1,8 +1,8 @@
-# Builds the downloads for Linux (x64 and ARM64): a .deb, an .rpm, an Arch
-# package and a tarball, all self-contained (no .NET needed). Windows builds
-# and releases are aster-windows'. Pushing a tag like
-# v0.10.0-beta publishes them as a GitHub release (a pre-release when the
-# version has a suffix); running it by hand only builds them, to try.
+# Builds the downloads for Windows: an installer and a portable zip, both
+# self-contained (no .NET needed). Linux builds and releases are
+# aster-linux'. Pushing a tag like v0.10.0-beta publishes them as a GitHub
+# release (a pre-release when the version has a suffix); running it by hand
+# only builds them, to try.
 name: Release
 
 on:
@@ -38,7 +38,7 @@ jobs:
           version="${TAG#v}"
           [ -n "$version" ] || version="$INPUT"
           echo "version=$version" >> "$GITHUB_OUTPUT"
-      # On a tag: the release, as a draft, for the builds to put their files on as they finish
+      # On a tag: the release, as a draft, for the build to put its files on as it finishes
       # (straight there, not through Actions' artifact storage, whose quota a release can hit).
       - name: Draft the release
         if: github.ref_type == 'tag'
@@ -49,26 +49,19 @@ jobs:
           prerelease=""
           case "$VERSION" in *-*) prerelease="--prerelease" ;; esac
           cat > notes.md <<'NOTES'
-          **Linux** (x64, and ARM64 for a Raspberry Pi 5 or an ARM laptop):
-          - **Debian, Ubuntu, Mint, Pop!_OS:** the `.deb`: `sudo apt install ./aster_…_amd64.deb` (it brings the mpv library).
-          - **Fedora, openSUSE:** the `.rpm`: `sudo dnf install ./aster-….x86_64.rpm` (or `zypper install`).
-          - **Arch, Manjaro, CachyOS:** the `.pkg.tar.zst`: `sudo pacman -U aster-….pkg.tar.zst`.
-          - **Anything else:** unpack the `.tar.gz` and run `./install.sh` (it needs the mpv library).
-          - **Flatpak**, where attached: `flatpak install --user Aster-….flatpak`; it brings mpv and the trailer player with it.
+          **Windows 10 (1809) or later:** `…-windows-x64-setup.exe` installs Aster for you (no administrator needed); the `.zip` runs from any folder. The app isn't signed yet, so Windows SmartScreen may warn the first time: choose **More info → Run anyway**.
 
-          Trailers play in the app with WebKitGTK 4.1 and GStreamer's good plugins installed (`webkit2gtk-4.1` and `gst-plugins-good` on Arch); without them they open in the browser.
-
-          Aster for Windows has its own releases, at [aster-windows](https://github.com/AsterMediaPlayer/aster-windows/releases).
+          Aster for Linux has its own releases, at [aster-linux](https://github.com/AsterMediaPlayer/aster-linux/releases).
           NOTES
           gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --draft --verify-tag \
             --title "Aster $VERSION" --notes-file notes.md --generate-notes $prerelease
 
-  linux:
-    name: Linux
+  windows:
+    name: Windows
     needs: version
     permissions:
       contents: write
-    runs-on: ubuntu-24.04
+    runs-on: windows-latest
     timeout-minutes: 30
     env:
       VERSION: ${{ needs.version.outputs.version }}
@@ -77,60 +70,34 @@ jobs:
       - uses: actions/setup-dotnet@v5
         with:
           dotnet-version: 10.0.x
-      # ARM64 is published from here too: .NET builds for it across, and the packages bring its native libraries.
-      - name: Publish
-        run: |
-          for rid in linux-x64 linux-arm64; do
-            dotnet publish src/Aster.Desktop -c Release -r $rid --self-contained -p:Version=$VERSION -p:DebugType=none -o "stage/Aster-$VERSION-$rid/aster"
-          done
-          find stage -name '*.pdb' -delete
-      - name: Tarballs
-        run: |
-          mkdir -p dist
-          for rid in linux-x64 linux-arm64; do
-            dir="stage/Aster-$VERSION-$rid"
-            cp packaging/linux/aster.desktop packaging/linux/install.sh "$dir/"
-            cp src/Aster.Desktop/Assets/aster.png "$dir/aster.png"
-            chmod +x "$dir/install.sh" "$dir/aster/Aster.Desktop"
-            tar -C stage -czf "dist/Aster-$VERSION-$rid.tar.gz" "Aster-$VERSION-$rid"
-          done
-      - uses: actions/setup-go@v5
+      - uses: actions/cache@v4
         with:
-          go-version: stable
-          cache: false
-      - name: Packages
-        # .deb, .rpm and Arch, from packaging/linux/nfpm.yaml; nfpm names each file as its distribution expects.
+          path: native
+          key: libmpv-${{ hashFiles('tools/fetch-libmpv.ps1') }}
+      - name: Publish
+        # DebugType=none covers our own projects; packages' native debug files (SkiaSharp's, some 100 MB) go too.
         run: |
-          go install github.com/goreleaser/nfpm/v2/cmd/nfpm@v2.41.0
-          for pair in linux-x64:amd64 linux-arm64:arm64; do
-            rid="${pair%%:*}"
-            export ARCH="${pair##*:}"
-            rm -rf stage/package && cp -a "stage/Aster-$VERSION-$rid/aster" stage/package
-            # A pre-release sorts before its release: 0.11.0~beta for dpkg and rpm, 0.11.0beta for pacman (no hyphens there).
-            for packager in deb rpm archlinux; do
-              if [ $packager = archlinux ]; then pkgversion="${VERSION/-/}"; else pkgversion="${VERSION/-/\~}"; fi
-              VERSION="$pkgversion" "$(go env GOPATH)/bin/nfpm" package -f packaging/linux/nfpm.yaml -p $packager -t dist/
-            done
-          done
-          ls -la dist
-      # What each package holds and asks for, in the log: a trial run's only look at them.
-      - name: Inspect
+          dotnet publish src/Aster.Desktop -c Release -r win-x64 --self-contained -p:Version=$env:VERSION -p:DebugType=none -o publish/win-x64
+          Remove-Item publish/win-x64/*.pdb -ErrorAction SilentlyContinue
+      - name: Zip
         run: |
-          command -v rpm >/dev/null || sudo apt-get install -y -qq rpm >/dev/null
-          for f in dist/*.deb; do echo "== $f"; dpkg-deb -I "$f"; dpkg-deb -c "$f" | grep -v '/opt/aster/.*\.dll$'; done
-          for f in dist/*.rpm; do echo "== $f"; rpm -qip "$f" 2>/dev/null; echo "-- requires:"; rpm -qp --requires "$f" 2>/dev/null; echo "-- recommends:"; rpm -qp --recommends "$f" 2>/dev/null; done
-          for f in dist/*.pkg.tar.zst; do echo "== $f"; tar --zstd -xOf "$f" .PKGINFO; done
-          ls -la dist
+          New-Item -ItemType Directory -Force dist | Out-Null
+          Compress-Archive -Path publish/win-x64/* -DestinationPath "dist/Aster-$env:VERSION-windows-x64.zip"
+      - name: Installer
+        run: |
+          choco install innosetup --no-progress -y
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" /Q "/DAppVersion=$env:VERSION" "/DSourceDir=$PWD\publish\win-x64" "/DOutputDir=$PWD\dist" installer\aster.iss
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Onto the release
         if: github.ref_type == 'tag'
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release upload "$GITHUB_REF_NAME" dist/* --repo "$GITHUB_REPOSITORY" --clobber
+        run: gh release upload "$env:GITHUB_REF_NAME" (Get-ChildItem dist).FullName --repo "$env:GITHUB_REPOSITORY" --clobber
 
   release:
     name: Release
     if: github.ref_type == 'tag'
-    needs: [version, linux]
+    needs: [version, windows]
     runs-on: ubuntu-24.04
     permissions:
       contents: write

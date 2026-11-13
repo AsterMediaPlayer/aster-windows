@@ -1,5 +1,5 @@
 name: Feature request or idea
-description: Suggest something for Aster for Windows and Linux
+description: Suggest something for Aster for Windows
 labels: [enhancement]
 body:
   - type: markdown
@@ -25,7 +25,6 @@ body:
       options:
         - label: "Windows (installer)"
         - label: "Windows (zip)"
-        - label: "Linux"
   - type: checkboxes
     id: help
     attributes:
